@@ -29,6 +29,8 @@ define('TMP_DIR', ROOT . '/data/uploads-tmp');
 define('SECRET_FILE', __DIR__ . '/secret.php');
 define('TOKEN_TTL', 30 * 24 * 3600);
 define('KEEP_BACKUPS', 50);
+define('MIN_PASSWORD', 4);
+define('GUARD_FILE', BACKUP_DIR . '/login-guard.php');
 define('MEDIA_RE', '/^media\/\d{8}-[a-z0-9]{6}\.(jpg|jpeg|png|gif|webp|mp4|webm)$/');
 
 function out($data, $code = 200)
@@ -90,11 +92,62 @@ function require_auth()
     }
 }
 
+function pw_len($s)
+{
+    return function_exists('mb_strlen') ? mb_strlen($s, 'UTF-8') : strlen($s);
+}
+
+/* ---------- brute-force guard ----------
+   Short PINs are allowed, so wrong guesses are rate limited:
+   5 per IP per 15 min, 20 for everyone per hour. Logged-in devices keep their token. */
+function guard_load()
+{
+    if (!is_file(GUARD_FILE)) return array();
+    $raw = (string)file_get_contents(GUARD_FILE);
+    $d = json_decode(substr($raw, strpos($raw, "\n") + 1), true);
+    return is_array($d) ? $d : array();
+}
+
+function guard_save($fails)
+{
+    private_dir(BACKUP_DIR);
+    // .php that exits: never downloadable even where .htaccess is ignored (nginx)
+    file_put_contents(GUARD_FILE, "<?php http_response_code(404); exit; ?>\n" . json_encode(array_values($fails)), LOCK_EX);
+}
+
+function client_id()
+{
+    return substr(hash('sha256', isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : ''), 0, 16);
+}
+
+function guard_check()
+{
+    $now = time();
+    $ip = client_id();
+    $byIp = 0;
+    $all = 0;
+    foreach (guard_load() as $f) {
+        if ($f['t'] > $now - 3600) $all++;
+        if ($f['ip'] === $ip && $f['t'] > $now - 900) $byIp++;
+    }
+    if ($byIp >= 5 || $all >= 20) fail('ใส่รหัสผิดหลายครั้ง — รอ 15 นาทีแล้วลองใหม่', 429);
+}
+
+function guard_fail()
+{
+    $now = time();
+    $fails = array_filter(guard_load(), function ($f) use ($now) { return $f['t'] > $now - 3600; });
+    $fails[] = array('t' => $now, 'ip' => client_id());
+    guard_save($fails);
+}
+
 function check_password($password)
 {
+    guard_check();
     $s = secret();
     if (!$s || !password_verify((string)$password, $s['hash'])) {
-        sleep(1); // slow down guessing
+        guard_fail();
+        sleep(1);
         fail('รหัสผ่านไม่ถูกต้อง', 401);
     }
 }
@@ -167,7 +220,7 @@ switch ($action) {
         if (secret()) fail('ตั้งรหัสผ่านไปแล้ว', 409);
         $b = body_json();
         $pw = isset($b['password']) ? (string)$b['password'] : '';
-        if (strlen($pw) < 8) fail('รหัสผ่านต้องยาวอย่างน้อย 8 ตัวอักษร');
+        if (pw_len($pw) < MIN_PASSWORD) fail('รหัสผ่านต้องยาวอย่างน้อย ' . MIN_PASSWORD . ' ตัว');
         out(array('ok' => true, 'token' => make_token(write_secret($pw))));
 
     case 'login':
@@ -182,7 +235,7 @@ switch ($action) {
         $b = body_json();
         check_password(isset($b['old']) ? $b['old'] : '');
         $new = isset($b['new']) ? (string)$b['new'] : '';
-        if (strlen($new) < 8) fail('รหัสผ่านใหม่ต้องยาวอย่างน้อย 8 ตัวอักษร');
+        if (pw_len($new) < MIN_PASSWORD) fail('รหัสผ่านใหม่ต้องยาวอย่างน้อย ' . MIN_PASSWORD . ' ตัว');
         // new key = every other logged-in device is signed out
         out(array('ok' => true, 'token' => make_token(write_secret($new))));
 

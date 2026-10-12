@@ -187,7 +187,7 @@ function connectBanner() {
   if (state.mode === 'server') {
     if (!state.store.status.setup) {
       return `<div class="banner"><b>ตั้งรหัสผ่านผู้ดูแล (ครั้งแรก)</b>
-        <input type="password" id="srvPw" placeholder="รหัสผ่าน อย่างน้อย 8 ตัว" style="width:auto" autocomplete="new-password">
+        <input type="password" id="srvPw" placeholder="รหัสผ่าน อย่างน้อย 4 ตัว" style="width:auto" autocomplete="new-password">
         <input type="password" id="srvPw2" placeholder="ยืนยันรหัสผ่าน" style="width:auto" autocomplete="new-password">
         <button class="btn primary small" data-act="srvSetup">ตั้งรหัสผ่าน</button></div>`;
     }
@@ -579,7 +579,7 @@ function viewSettings() {
       <p class="small-text muted" style="margin:0">ข้อมูลถูกบันทึกบน Host ของร้าน และสำรองอัตโนมัติ 50 ครั้งล่าสุดใน <code>data/backups/</code></p>
       <div class="grid2">
         <label class="f">รหัสผ่านเดิม<input type="password" id="pwOld" autocomplete="current-password"></label>
-        <label class="f">รหัสผ่านใหม่ (≥ 8 ตัว)<input type="password" id="pwNew" autocomplete="new-password"></label>
+        <label class="f">รหัสผ่านใหม่ (≥ 4 ตัว)<input type="password" id="pwNew" autocomplete="new-password"></label>
       </div>
       <div class="row">
         <button class="btn" data-act="srvPassword">เปลี่ยนรหัสผ่าน</button>
@@ -910,7 +910,7 @@ const actions = {
   },
   srvSetup: async () => {
     const pw = $('#srvPw').value, pw2 = $('#srvPw2').value;
-    if (pw.length < 8) return alert('รหัสผ่านต้องยาวอย่างน้อย 8 ตัวอักษร');
+    if (pw.length < 4) return alert('รหัสผ่านต้องยาวอย่างน้อย 4 ตัว');
     if (pw !== pw2) return alert('รหัสผ่านทั้งสองช่องไม่ตรงกัน');
     try {
       await state.store.setup(pw);
