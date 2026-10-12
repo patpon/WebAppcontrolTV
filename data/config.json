@@ -353,7 +353,7 @@
   "screens": [
     {
       "id": "lobby",
-      "name": "ทางเข้าร้าน",
+      "name": "หน้าร้าน",
       "mode": "lobby",
       "playlist": "pl_main",
       "welcome": "",

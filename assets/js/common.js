@@ -57,7 +57,7 @@ var RB = (function () {
 
   /* Special screens (e.g. the entrance) use the same fields as rooms plus the 'lobby' / 'bookings' modes. */
   function defaultScreen() {
-    return { id: 'lobby', name: 'ทางเข้าร้าน', mode: 'lobby', playlist: 'pl_main', welcome: '', message: '', reload: 0 };
+    return { id: 'lobby', name: 'หน้าร้าน', mode: 'lobby', playlist: 'pl_main', welcome: '', message: '', reload: 0 };
   }
 
   /* Fill in any missing fields so older/hand-edited configs never crash the UI. */

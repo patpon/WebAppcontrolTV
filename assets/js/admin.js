@@ -293,9 +293,9 @@ function viewBookings() {
   const lobby = c.screens[0];
   return `
   <div class="page-head">
-    <div><h1>การจอง &amp; จอทางเข้า</h1><p>รายชื่อจองขึ้นบนจอทางเข้า และจอห้องที่ถูกจองจะขึ้น “ยินดีต้อนรับ + ชื่อ” ให้อัตโนมัติ</p></div>
+    <div><h1>การจอง &amp; จอหน้าร้าน</h1><p>รายชื่อจองขึ้นบนจอหน้าร้าน และจอห้องที่ถูกจองจะขึ้น “ยินดีต้อนรับ + ชื่อ” ให้อัตโนมัติ</p></div>
     <div class="row"><input type="date" id="bkDate" value="${esc(date)}" style="width:auto"><button class="btn small" data-act="bkToday">วันนี้</button>
-      ${lobby ? `<a class="btn small" href="${esc(tvUrl(lobby.id, '&draft=1'))}" target="_blank" rel="noopener">${icon('eye')} ดูจอทางเข้า</a>` : ''}</div>
+      ${lobby ? `<a class="btn small" href="${esc(tvUrl(lobby.id, '&draft=1'))}" target="_blank" rel="noopener">${icon('eye')} ดูจอหน้าร้าน</a>` : ''}</div>
   </div>
   <div class="banner small-text">ข้อมูลบน GitHub เป็นสาธารณะ — ใส่แค่ <b>ชื่อที่จะโชว์บนจอ</b> (เช่น คุณเอ) <b>ห้ามใส่เบอร์โทร</b> · การจองที่เก่ากว่าเมื่อวานจะถูกลบอัตโนมัติตอนบันทึก</div>
   <section class="card cat">
@@ -324,7 +324,7 @@ function viewBookings() {
   </section>
 
   <div class="page-head" style="margin-top:28px">
-    <div><h1 style="font-size:22px">จอพิเศษ</h1><p>จอทางเข้า / หน้าร้าน — เปิดลิงก์ “จอจริง” บนทีวีที่ทางเข้า</p></div>
+    <div><h1 style="font-size:22px">จอพิเศษ</h1><p>จอหน้าร้าน / จอพิเศษอื่น — เปิดลิงก์ “จอจริง” บนทีวีหน้าร้าน</p></div>
     <button class="btn" data-act="addScreen">${icon('plus')} เพิ่มจอพิเศษ</button>
   </div>
   <div class="rooms-grid">${c.screens.map((sc, i) => roomCard(sc, i, 'screens')).join('') || '<div class="card empty">ยังไม่มีจอพิเศษ</div>'}</div>`;
@@ -787,7 +787,7 @@ const actions = {
     if (confirm(`ลบการจอง ${b.room || ''} ${b.name || ''}?`)) change(c => c.bookings.splice(d.i, 1));
   },
   addScreen: () => {
-    const name = prompt('ชื่อจอ (เช่น ทางเข้าร้าน, หน้าบาร์)', 'จอพิเศษ');
+    const name = prompt('ชื่อจอ (เช่น หน้าร้าน, หน้าบาร์)', 'จอพิเศษ');
     if (!name) return;
     change(c => {
       const sc = RB.defaultScreen();
