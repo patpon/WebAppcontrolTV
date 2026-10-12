@@ -1,0 +1,6 @@
+# TVs poll config.json - always revalidate so edits show up within one poll
+<IfModule mod_headers.c>
+  <Files "config.json">
+    Header set Cache-Control "no-cache"
+  </Files>
+</IfModule>

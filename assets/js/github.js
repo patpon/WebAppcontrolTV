@@ -49,7 +49,7 @@ class GitHubStore {
   }
 
   /**
-   * files:   [{ path, text }] or [{ path, base64 }]
+   * files:   [{ path, text }] or [{ path, blob }]
    * deletes: [path]
    * onProgress(msg)
    */
@@ -62,7 +62,7 @@ class GitHubStore {
       onProgress(`อัปโหลด ${n}/${files.length}: ${f.path}`);
       const blob = await this.api('/git/blobs', {
         method: 'POST',
-        body: f.base64 != null ? { content: f.base64, encoding: 'base64' } : { content: f.text, encoding: 'utf-8' }
+        body: f.blob ? { content: await GitHubStore.toBase64(f.blob), encoding: 'base64' } : { content: f.text, encoding: 'utf-8' }
       });
       tree.push({ path: f.path, mode: '100644', type: 'blob', sha: blob.sha });
     }
@@ -79,6 +79,15 @@ class GitHubStore {
       body: { sha: newCommit.sha }
     });
     return newCommit.sha;
+  }
+
+  static toBase64(blob) {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(String(r.result).split(',')[1]);
+      r.onerror = rej;
+      r.readAsDataURL(blob);
+    });
   }
 
   /** Paths that currently exist in the branch (used to skip deleting files that were never pushed). */

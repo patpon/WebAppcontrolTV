@@ -14,6 +14,7 @@ const state = {
   deletes: new Set(),   // repo paths to remove on next save
   plSel: null,
   bkDate: null,
+  mode: 'github',       // 'server' when api/index.php is available on this host
   busy: false
 };
 
@@ -70,9 +71,24 @@ function setConn(kind, text) {
 }
 
 async function connect() {
-  const gh = ghLoad();
   state.store = null;
   state.canPush = false;
+
+  // Self-hosted (PHP): api/index.php lives next to this page
+  const st = await ServerStore.detect();
+  if (st) {
+    state.mode = 'server';
+    state.store = new ServerStore(st);
+    if (!st.writable) setConn('err', 'Host เขียนไฟล์ไม่ได้ — ตั้ง permission โฟลเดอร์ data, media, api');
+    else if (!st.setup) setConn('warn', 'ยังไม่ได้ตั้งรหัสผ่านผู้ดูแล');
+    else if (await state.store.check()) { state.canPush = true; setConn('ok', 'เข้าสู่ระบบแล้ว'); }
+    else setConn('warn', 'ยังไม่ได้เข้าสู่ระบบ');
+    try { return JSON.parse(await state.store.readText()); } catch (_) { return null; }
+  }
+
+  // GitHub Pages: commit through the GitHub API with a personal token
+  state.mode = 'github';
+  const gh = ghLoad();
   if (!gh.token) { setConn('warn', 'ยังไม่เชื่อม GitHub (ดูอย่างเดียว)'); return null; }
   try {
     state.store = new GitHubStore(gh);
@@ -168,6 +184,17 @@ function render() {
 }
 
 function connectBanner() {
+  if (state.mode === 'server') {
+    if (!state.store.status.setup) {
+      return `<div class="banner"><b>ตั้งรหัสผ่านผู้ดูแล (ครั้งแรก)</b>
+        <input type="password" id="srvPw" placeholder="รหัสผ่าน อย่างน้อย 8 ตัว" style="width:auto" autocomplete="new-password">
+        <input type="password" id="srvPw2" placeholder="ยืนยันรหัสผ่าน" style="width:auto" autocomplete="new-password">
+        <button class="btn primary small" data-act="srvSetup">ตั้งรหัสผ่าน</button></div>`;
+    }
+    return `<div class="banner"><b>เข้าสู่ระบบ</b><span class="muted">ใส่รหัสผ่านผู้ดูแลเพื่อบันทึกข้อมูล</span>
+      <input type="password" id="srvPw" placeholder="รหัสผ่าน" style="width:auto" autocomplete="current-password">
+      <button class="btn primary small" data-act="srvLogin">เข้าสู่ระบบ</button></div>`;
+  }
   return `<div class="banner"><b>โหมดดูอย่างเดียว</b><span class="muted">แก้ไขได้ แต่ต้องเชื่อม GitHub Token ก่อนจึงจะ “บันทึก & ส่งขึ้นจอ” ได้</span>
     <button class="btn small" data-act="tab" data-tab="settings">ไปตั้งค่าการเชื่อมต่อ</button></div>`;
 }
@@ -547,7 +574,18 @@ function viewSettings() {
       <label class="check"><input type="checkbox" data-path="settings.idleIgnoreAudio" ${c.settings.idleIgnoreAudio ? 'checked' : ''}> ไม่ต้องรอให้เสียงเงียบ (ใช้เมื่อแอปคาราโอเกะเปิดเพลงพื้นหลังตลอด)</label>
     </section>
 
-    <section class="card">
+    ${state.mode === 'server' ? `<section class="card">
+      <h2>บัญชีผู้ดูแล (Server ของร้าน)</h2>
+      <p class="small-text muted" style="margin:0">ข้อมูลถูกบันทึกบน Host ของร้าน และสำรองอัตโนมัติ 50 ครั้งล่าสุดใน <code>data/backups/</code></p>
+      <div class="grid2">
+        <label class="f">รหัสผ่านเดิม<input type="password" id="pwOld" autocomplete="current-password"></label>
+        <label class="f">รหัสผ่านใหม่ (≥ 8 ตัว)<input type="password" id="pwNew" autocomplete="new-password"></label>
+      </div>
+      <div class="row">
+        <button class="btn" data-act="srvPassword">เปลี่ยนรหัสผ่าน</button>
+        <button class="btn danger" data-act="srvLogout">ออกจากระบบเครื่องนี้</button>
+      </div>
+    </section>` : `<section class="card">
       <h2>เชื่อมต่อ GitHub</h2>
       <p class="small-text muted" style="margin:0">ใช้ Fine-grained token สิทธิ์ <b>Contents: Read and write</b> เฉพาะ repo นี้ — Token เก็บในเบราว์เซอร์เครื่องนี้เท่านั้น ใช้บนคอมกลางของร้าน อย่าใช้บนเครื่องสาธารณะ</p>
       <div class="grid3">
@@ -560,7 +598,7 @@ function viewSettings() {
         <button class="btn primary" data-act="ghConnect">เชื่อมต่อ &amp; โหลดข้อมูลล่าสุด</button>
         ${gh.token ? `<button class="btn danger" data-act="ghForget">ลบ Token จากเครื่องนี้</button>` : ''}
       </div>
-    </section>
+    </section>`}
 
     <section class="card">
       <h2>สำรองข้อมูล</h2>
@@ -593,17 +631,8 @@ function openPicker(kind, cb) {
 function closeModal() { $('#modal').classList.add('hidden'); pickCb = null; }
 
 /* ---------- uploads ---------- */
-function blobToBase64(blob) {
-  return new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload = () => res(String(r.result).split(',')[1]);
-    r.onerror = rej;
-    r.readAsDataURL(blob);
-  });
-}
-
 async function shrinkImage(file) {
-  if (/gif|svg/.test(file.type)) return { blob: file, ext: file.type.includes('gif') ? 'gif' : 'svg' };
+  if (file.type === 'image/gif') return { blob: file, ext: 'gif' };
   const bmp = await createImageBitmap(file);
   const max = 1920, scale = Math.min(1, max / Math.max(bmp.width, bmp.height));
   const png = file.type === 'image/png';
@@ -635,7 +664,11 @@ async function handleFiles(files) {
   const added = [];
   for (const f of files) {
     const isVideo = f.type.startsWith('video/');
-    if (!isVideo && !f.type.startsWith('image/')) { toast(`ข้าม ${f.name} — ไม่ใช่รูป/วิดีโอ`); continue; }
+    if (!isVideo && (!f.type.startsWith('image/') || f.type.includes('svg'))) { toast(`ข้าม ${f.name} — ใช้ได้เฉพาะ JPG / PNG / GIF / WebP / MP4`); continue; }
+    if (isVideo && !/\.(mp4|webm)$/i.test(f.name)) {
+      alert(`${f.name} — ใช้ได้เฉพาะวิดีโอ MP4 หรือ WebM\nแปลงไฟล์ด้วย CapCut / HandBrake ก่อน`);
+      continue;
+    }
     if (isVideo && f.size > 95 * 1048576) {
       alert(`${f.name} ใหญ่เกิน (${fmtSize(f.size)})\nGitHub รับได้ไม่เกิน ~95 MB ต่อไฟล์ — ลองย่อเป็น 720p ด้วย HandBrake หรือ CapCut ก่อน`);
       continue;
@@ -645,7 +678,7 @@ async function handleFiles(files) {
       const { blob, ext } = isVideo ? { blob: f, ext: (f.name.split('.').pop() || 'mp4').toLowerCase() } : await shrinkImage(f);
       const path = newPath(ext);
       const url = URL.createObjectURL(blob);
-      state.pending.set(path, { base64: await blobToBase64(blob) });
+      state.pending.set(path, { blob });
       state.localUrls.set(path, url);
       const m = { id: uid('m'), type: isVideo ? 'video' : 'image', name: f.name.replace(/\.[^.]+$/, ''), src: path, size: blob.size };
       if (isVideo) m.duration = await videoDuration(url);
@@ -665,8 +698,13 @@ async function handleFiles(files) {
 async function save() {
   if (state.busy) return;
   if (!state.store || !state.canPush) {
-    alert('ยังไม่ได้เชื่อม GitHub Token ที่มีสิทธิ์เขียน\nไปที่แท็บ “ตั้งค่า” → เชื่อมต่อ GitHub');
-    state.tab = 'settings';
+    if (state.mode === 'server') {
+      alert('ยังไม่ได้เข้าสู่ระบบ — ใส่รหัสผ่านผู้ดูแลที่แถบด้านบนก่อน');
+      window.scrollTo(0, 0);
+    } else {
+      alert('ยังไม่ได้เชื่อม GitHub Token ที่มีสิทธิ์เขียน\nไปที่แท็บ “ตั้งค่า” → เชื่อมต่อ GitHub');
+      state.tab = 'settings';
+    }
     render();
     return;
   }
@@ -688,10 +726,11 @@ async function save() {
     cfg.version = Math.max(Number(remote && remote.version) || 0, Number(cfg.version) || 0) + 1;
     cfg.updatedAt = new Date().toISOString();
 
-    const files = [...state.pending].map(([path, p]) => ({ path, base64: p.base64 }));
+    const files = [...state.pending].map(([path, p]) => ({ path, blob: p.blob }));
     files.push({ path: RB.CONFIG_PATH, text: JSON.stringify(cfg, null, 2) + '\n' });
     let deletes = [];
-    if (state.deletes.size) {
+    if (state.deletes.size && state.mode === 'server') deletes = [...state.deletes];
+    else if (state.deletes.size) {
       const existing = await state.store.listPaths('media/');
       deletes = [...state.deletes].filter(p => existing.has(p));
     }
@@ -701,8 +740,9 @@ async function save() {
     state.deletes.clear();
     state.remoteUpdatedAt = cfg.updatedAt;
     state.dirty = false;
-    toast('บันทึกแล้ว ✓ จอทุกห้องจะเปลี่ยนภายใน ~1–2 นาที', 5000);
+    toast(state.mode === 'server' ? 'บันทึกแล้ว ✓ จอทุกห้องจะเปลี่ยนภายใน ~30 วินาที' : 'บันทึกแล้ว ✓ จอทุกห้องจะเปลี่ยนภายใน ~1–2 นาที', 5000);
   } catch (e) {
+    if (e.status === 401) { state.canPush = false; setConn('warn', 'หมดเวลาเข้าสู่ระบบ'); }
     alert('บันทึกไม่สำเร็จ: ' + e.message);
   } finally {
     state.busy = false;
@@ -868,6 +908,41 @@ const actions = {
     }
     render();
   },
+  srvSetup: async () => {
+    const pw = $('#srvPw').value, pw2 = $('#srvPw2').value;
+    if (pw.length < 8) return alert('รหัสผ่านต้องยาวอย่างน้อย 8 ตัวอักษร');
+    if (pw !== pw2) return alert('รหัสผ่านทั้งสองช่องไม่ตรงกัน');
+    try {
+      await state.store.setup(pw);
+      state.store.status.setup = true;
+      state.canPush = true;
+      setConn('ok', 'เข้าสู่ระบบแล้ว');
+      toast('ตั้งรหัสผ่านเรียบร้อย — จำรหัสนี้ไว้ ใช้เข้าระบบครั้งต่อไป', 5000);
+      render();
+    } catch (e) { alert('ตั้งรหัสผ่านไม่สำเร็จ: ' + e.message); }
+  },
+  srvLogin: async () => {
+    try {
+      progress('กำลังเข้าสู่ระบบ…');
+      await state.store.login($('#srvPw').value);
+      state.canPush = true;
+      setConn('ok', 'เข้าสู่ระบบแล้ว');
+      render();
+    } catch (e) { alert(e.message); } finally { progress(''); }
+  },
+  srvLogout: () => {
+    state.store.logout();
+    state.canPush = false;
+    setConn('warn', 'ยังไม่ได้เข้าสู่ระบบ');
+    render();
+  },
+  srvPassword: async () => {
+    try {
+      await state.store.changePassword($('#pwOld').value, $('#pwNew').value);
+      toast('เปลี่ยนรหัสผ่านแล้ว — เครื่องอื่นต้องเข้าสู่ระบบใหม่', 5000);
+      render();
+    } catch (e) { alert('เปลี่ยนรหัสผ่านไม่สำเร็จ: ' + e.message); }
+  },
   ghForget: () => { const g = ghLoad(); g.token = ''; ghSave(g); connect().then(render); },
   exportJson: () => {
     const a = document.createElement('a');
@@ -919,6 +994,10 @@ document.addEventListener('change', onBind);
 
 $('#modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
 document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.target.id === 'srvPw' || e.target.id === 'srvPw2')) {
+    actions[state.store && state.store.status.setup ? 'srvLogin' : 'srvSetup']();
+    return;
+  }
   if (e.key === 'Escape') closeModal();
   if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); if (state.dirty) save(); }
 });
