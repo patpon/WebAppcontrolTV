@@ -233,7 +233,7 @@ function roomCard(r, i, coll) {
   }
   const bks = coll === 'rooms' ? todayBookings(r.id) : [];
   const bkLine = bks.length
-    ? `<div class="bk-line">จองวันนี้: ${bks.map(b => `${esc(b.time)} ${esc(b.name)}${b.guests ? ` (${esc(b.guests)})` : ''}`).join(', ')}</div>` : '';
+    ? `<div class="bk-line">จองวันนี้: ${bks.map(b => `${esc((RB.byId(RB.sessions(state.cfg), RB.bookingSession(state.cfg, b)) || {}).name || '')} ${esc(b.name)}${b.guests ? ` (${esc(b.guests)})` : ''}`).join(', ')}</div>` : '';
   return `
   <article class="card room mode-${r.mode}">
     <div class="room-top"><input class="room-name" data-path="${p}.name" value="${esc(r.name)}" aria-label="ชื่อห้อง"></div>
@@ -253,10 +253,14 @@ function roomCard(r, i, coll) {
 function viewBookings() {
   const c = state.cfg, h = c.settings.dayStartHour;
   const date = state.bkDate || (state.bkDate = RB.businessDate(new Date(), h));
-  const list = c.bookings.map((b, i) => ({ b, i })).filter(x => x.b.date === date)
-    .sort((x, y) => RB.bookingMinutes(x.b.time, h) - RB.bookingMinutes(y.b.time, h));
+  const ss = RB.sessions(c);
+  const sesIdx = id => Math.max(0, ss.findIndex(s => s.id === id));
+  const roomIdx = id => { const k = c.rooms.findIndex(r => String(r.id) === String(id)); return k < 0 ? 999 : k; };
+  const list = c.bookings.map((b, i) => ({ b, i, s: RB.bookingSession(c, b) })).filter(x => x.b.date === date)
+    .sort((x, y) => sesIdx(x.s) - sesIdx(y.s) || roomIdx(x.b.room) - roomIdx(y.b.room));
   const active = list.filter(x => x.b.status !== 'cancelled');
   const guests = active.reduce((n, x) => n + (Number(x.b.guests) || 0), 0);
+  const perSes = ss.map(s => `${esc(s.name)} ${active.filter(x => x.s === s.id).length} ห้อง`).join(' · ');
   const roomOpts = sel => '<option value="">— ไม่ระบุห้อง —</option>' +
     c.rooms.map(r => `<option value="${esc(r.id)}" ${String(r.id) === String(sel) ? 'selected' : ''}>${esc(r.name)}</option>`).join('');
   const lobby = c.screens[0];
@@ -268,15 +272,15 @@ function viewBookings() {
   </div>
   <div class="banner small-text">ข้อมูลบน GitHub เป็นสาธารณะ — ใส่แค่ <b>ชื่อที่จะโชว์บนจอ</b> (เช่น คุณเอ) <b>ห้ามใส่เบอร์โทร</b> · การจองที่เก่ากว่าเมื่อวานจะถูกลบอัตโนมัติตอนบันทึก</div>
   <section class="card cat">
-    <div class="cat-head"><h2 style="flex:1;font-size:17px">${active.length} การจอง · ${guests} ท่าน</h2>
+    <div class="cat-head"><h2 style="flex:1;font-size:17px">${perSes} · รวม ${guests} ท่าน</h2>
       <button class="btn primary small" data-act="addBooking">${icon('plus')} เพิ่มการจอง</button></div>
     <table class="menu-table bk-table">
-      <thead><tr><th>เวลา</th><th>ชื่อ (โชว์บนจอ)</th><th>ห้อง</th><th>คน</th><th>โอกาส / หมายเหตุ</th><th>สถานะ</th><th></th></tr></thead>
-      <tbody>${list.map(({ b, i }) => `
+      <thead><tr><th>รอบ</th><th>ห้อง</th><th>ชื่อ (โชว์บนจอ)</th><th>คน</th><th>โอกาส / หมายเหตุ</th><th>สถานะ</th><th></th></tr></thead>
+      <tbody>${list.map(({ b, i, s }) => `
         <tr class="${b.status === 'cancelled' ? 'na' : ''}" data-bk="${esc(b.id)}">
-          <td style="width:120px"><input type="time" data-path="bookings.${i}.time" data-rerender value="${esc(b.time)}"></td>
-          <td><input data-path="bookings.${i}.name" value="${esc(b.name)}" placeholder="เช่น คุณเอ"></td>
+          <td style="width:120px"><select data-path="bookings.${i}.session" data-rerender>${ss.map(x => `<option value="${esc(x.id)}" ${x.id === s ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></td>
           <td style="width:140px"><select data-path="bookings.${i}.room" data-rerender>${roomOpts(b.room)}</select></td>
+          <td><input data-path="bookings.${i}.name" value="${esc(b.name)}" placeholder="เช่น คุณเอ"></td>
           <td style="width:80px"><input type="number" min="0" data-type="num" data-path="bookings.${i}.guests" value="${esc(b.guests)}"></td>
           <td><input list="noteList" data-path="bookings.${i}.note" value="${esc(b.note)}" placeholder="เช่น สุขสันต์วันเกิด"></td>
           <td style="width:120px"><select data-path="bookings.${i}.status" data-rerender>${BK_STATUS.map(st => `<option value="${st.id}" ${b.status === st.id ? 'selected' : ''}>${st.label}</option>`).join('')}</select></td>
@@ -285,7 +289,9 @@ function viewBookings() {
     </table>
     <datalist id="noteList">${NOTE_TPL.map(t => `<option value="${t}">`).join('')}</datalist>
     <div style="display:flex;flex-direction:column;gap:6px;margin-top:14px">
-      <label class="check"><input type="checkbox" data-path="settings.autoWelcome" ${c.settings.autoWelcome ? 'checked' : ''}> จอห้องที่ถูกจองขึ้น “ยินดีต้อนรับ + ชื่อ + โอกาส” อัตโนมัติ (1 ชม. ก่อนเวลาจอง ถึง 4 ชม. หลัง)</label>
+      <div class="row small-text">เวลารอบ: ${ss.map((x, k) => `<b>${esc(x.name)}</b>
+        <input type="time" style="width:auto" data-path="settings.sessions.${k}.start" value="${esc(x.start)}">–<input type="time" style="width:auto" data-path="settings.sessions.${k}.end" value="${esc(x.end)}">`).join(' &nbsp; ')}</div>
+      <label class="check"><input type="checkbox" data-path="settings.autoWelcome" ${c.settings.autoWelcome ? 'checked' : ''}> จอห้องที่ถูกจองขึ้น “ยินดีต้อนรับ + ชื่อ + โอกาส” อัตโนมัติ (ตั้งแต่ 1 ชม. ก่อนเริ่มรอบ จนจบรอบ)</label>
       <label class="check"><input type="checkbox" data-path="settings.maskNames" ${c.settings.maskNames ? 'checked' : ''}> ย่อนามสกุลบนจอ (สมชาย ใจดี → สมชาย ใ.)</label>
     </div>
   </section>
@@ -730,14 +736,15 @@ const actions = {
 
   bkToday: () => { state.bkDate = RB.businessDate(new Date(), state.cfg.settings.dayStartHour); render(); },
   addBooking: () => {
-    const b = { id: uid('bk'), date: state.bkDate, time: '19:00', name: '', room: '', guests: '', note: '', status: 'booked' };
+    const ses = RB.currentSession(state.cfg, new Date());
+    const b = { id: uid('bk'), date: state.bkDate, session: ses.id, name: '', room: '', guests: '', note: '', status: 'booked' };
     change(c => c.bookings.push(b));
     const input = document.querySelector(`tr[data-bk="${b.id}"] input[data-path$=".name"]`);
     if (input) input.focus();
   },
   delBooking: d => {
     const b = state.cfg.bookings[d.i];
-    if (confirm(`ลบการจอง ${b.time} ${b.name || ''}?`)) change(c => c.bookings.splice(d.i, 1));
+    if (confirm(`ลบการจอง ${b.room || ''} ${b.name || ''}?`)) change(c => c.bookings.splice(d.i, 1));
   },
   addScreen: () => {
     const name = prompt('ชื่อจอ (เช่น ทางเข้าร้าน, หน้าบาร์)', 'จอพิเศษ');

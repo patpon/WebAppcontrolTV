@@ -249,22 +249,22 @@ body.no-ticker.layout-lobby .board, body.no-ticker.layout-lobby #stage, body.no-
 
 .board-head { display: flex; align-items: baseline; justify-content: space-between; gap: 2vmin; }
 .board-head h2 { font-size: 4.6vmin; font-weight: 600; }
-.board-head .date { color: var(--primary); font-size: 2.4vmin; }
+.board-head .date { color: var(--muted); font-size: 2.4vmin; }
+.board-head .ses { display: inline-block; margin-top: 1vmin; padding: .4vmin 1.8vmin; border-radius: 99vmin; border: 1px solid var(--primary); color: var(--primary); font-size: 2.4vmin; }
+.board-next { margin-top: 1.4vmin; padding-top: 1.4vmin; border-top: 1px dashed rgba(255,255,255,.15); color: var(--muted); font-size: 2.3vmin; }
 .board-list { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 1.2vmin; margin-top: 2.4vmin; }
 .bk {
-  display: grid; grid-template-columns: 11vmin 1fr auto auto; align-items: center; gap: 2vmin;
+  display: grid; grid-template-columns: 12vmin 1fr auto; align-items: center; gap: 2.4vmin;
   padding: 1.4vmin 2vmin; border-radius: 1.6vmin; background: rgba(255,255,255,.05);
   font-size: 3vmin; animation: rise .7s cubic-bezier(.2,.8,.2,1) both;
 }
-.bk .t { font-weight: 700; color: var(--primary); font-variant-numeric: tabular-nums; }
 .bk .n { font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bk .n small { display: block; font-size: 2vmin; font-weight: 400; color: var(--accent); }
 .bk .g { font-size: 2.2vmin; color: var(--muted); white-space: nowrap; }
-.bk .r { padding: .4vmin 1.8vmin; border-radius: 99vmin; background: var(--primary); color: #1a1408; font-weight: 600; font-size: 2.4vmin; }
-.bk.soon { background: rgba(233, 138, 166, .14); box-shadow: inset 0 0 0 .3vmin var(--accent); }
+.bk .r { padding: .8vmin 0; border-radius: 1.2vmin; background: var(--primary); color: #1a1408; font-weight: 700; font-size: 3.2vmin; text-align: center; }
 .bk.arrived { opacity: .5; }
-.bk.late { opacity: .75; }
-body.layout-bookings .bk { grid-template-columns: 14vmin 1fr auto auto; font-size: 3.6vmin; padding: 1.6vmin 3vmin; }
+body.layout-bookings .bk { grid-template-columns: 15vmin 1fr auto; font-size: 3.6vmin; padding: 1.6vmin 3vmin; }
+body.layout-bookings .bk .r { font-size: 3.8vmin; }
 body.layout-bookings .board-head h2 { font-size: 6vmin; }
 .board-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.6vmin; text-align: center; }
 .board-empty b { font-size: 5vmin; font-weight: 600; }

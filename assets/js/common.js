@@ -35,7 +35,8 @@ var RB = (function () {
       shop: { name: 'ระเบียงบัว', tagline: 'อาหาร • เครื่องดื่ม • คาราโอเกะ', logo: '', theme: { primary: '#d9a845', accent: '#e98aa6', bg: '#0e1f1a' } },
       ticker: { enabled: true, text: 'ยินดีต้อนรับสู่ระเบียงบัว • สั่งอาหารเพิ่มได้ที่ปุ่มเรียกพนักงาน', speed: 60 },
       settings: { pollSeconds: 30, showClock: true, karaokeApp: '', promoApp: 'de.ozerov.fully', idleMinutes: 10, idleIgnoreAudio: false, bridgeEnabled: false,
-        maskNames: false, autoWelcome: true, dayStartHour: 6 },
+        maskNames: false, autoWelcome: true, dayStartHour: 6,
+        sessions: defaultSessions() },
       reload: 0,
       media: [],
       menu: { categories: [] },
@@ -44,6 +45,14 @@ var RB = (function () {
       screens: [defaultScreen()],
       bookings: []
     };
+  }
+
+  /* Bookings are per session (not per time slot). */
+  function defaultSessions() {
+    return [
+      { id: 'day', name: 'รอบเช้า', start: '11:00', end: '16:00' },
+      { id: 'night', name: 'รอบค่ำ', start: '17:00', end: '23:30' }
+    ];
   }
 
   /* Special screens (e.g. the entrance) use the same fields as rooms plus the 'lobby' / 'bookings' modes. */
@@ -113,10 +122,38 @@ var RB = (function () {
     return bookingMinutes(pad2(now.getHours()) + ':' + pad2(now.getMinutes()), startHour);
   }
 
-  function bookingsFor(cfg, date) {
-    var start = cfg.settings.dayStartHour;
-    return (cfg.bookings || []).filter(function (b) { return b.date === date && b.status !== 'cancelled'; })
-      .sort(function (a, b) { return bookingMinutes(a.time, start) - bookingMinutes(b.time, start); });
+  function sessions(cfg) {
+    var s = cfg.settings.sessions;
+    return Array.isArray(s) && s.length ? s : defaultSessions();
+  }
+
+  /* Older bookings carried a time instead of a session: map it to the session it falls in. */
+  function bookingSession(cfg, b) {
+    var ss = sessions(cfg);
+    if (b.session) return b.session;
+    if (!b.time) return ss[0].id;
+    var t = bookingMinutes(b.time, cfg.settings.dayStartHour);
+    for (var i = 0; i < ss.length; i++) if (t < bookingMinutes(ss[i].end, cfg.settings.dayStartHour)) return ss[i].id;
+    return ss[ss.length - 1].id;
+  }
+
+  /* The session on now: before a session ends it is "current" (so the morning shows the day list). */
+  function currentSession(cfg, now) {
+    var ss = sessions(cfg), nm = nowMinutes(now, cfg.settings.dayStartHour);
+    for (var i = 0; i < ss.length; i++) if (nm < bookingMinutes(ss[i].end, cfg.settings.dayStartHour)) return ss[i];
+    return ss[ss.length - 1];
+  }
+
+  function roomOrder(cfg, id) {
+    for (var i = 0; i < cfg.rooms.length; i++) if (String(cfg.rooms[i].id) === String(id)) return i;
+    return 999;
+  }
+
+  /* Active bookings for a business date (optionally one session), in room order. */
+  function bookingsFor(cfg, date, sessionId) {
+    return (cfg.bookings || []).filter(function (b) {
+      return b.date === date && b.status !== 'cancelled' && (!sessionId || bookingSession(cfg, b) === sessionId);
+    }).sort(function (a, b) { return roomOrder(cfg, a.room) - roomOrder(cfg, b.room); });
   }
 
   /* "สมชาย ใจดี" -> "สมชาย ใ." when masking is on (entrance screens are public). */
@@ -129,15 +166,16 @@ var RB = (function () {
     return parts.slice(0, -1).join(' ') + ' ' + last.charAt(0) + '.';
   }
 
-  /* The booking a room should greet right now: from 60 min before until 4 h after the booked time. */
+  /* The booking a room should greet right now: from 60 min before its session starts until the session ends. */
   function currentBooking(cfg, roomId, now) {
-    var start = cfg.settings.dayStartHour;
-    var nm = nowMinutes(now, start);
-    var list = bookingsFor(cfg, businessDate(now, start)).filter(function (b) {
-      var t = bookingMinutes(b.time, start);
-      return String(b.room) === String(roomId) && nm >= t - 60 && nm <= t + 240;
-    });
-    return list.length ? list[list.length - 1] : null;
+    var h = cfg.settings.dayStartHour, nm = nowMinutes(now, h), date = businessDate(now, h);
+    var ss = sessions(cfg);
+    for (var i = 0; i < ss.length; i++) {
+      if (nm < bookingMinutes(ss[i].start, h) - 60 || nm > bookingMinutes(ss[i].end, h)) continue;
+      var list = bookingsFor(cfg, date, ss[i].id).filter(function (b) { return String(b.room) === String(roomId); });
+      if (list.length) return list[0];
+    }
+    return null;
   }
 
   return {
@@ -145,6 +183,7 @@ var RB = (function () {
     defaultConfig: defaultConfig, defaultRoom: defaultRoom, normalize: normalize,
     byId: byId, mediaUrl: mediaUrl, findRoom: findRoom, defaultScreen: defaultScreen,
     businessDate: businessDate, bookingMinutes: bookingMinutes, nowMinutes: nowMinutes,
-    bookingsFor: bookingsFor, displayName: displayName, currentBooking: currentBooking
+    bookingsFor: bookingsFor, displayName: displayName, currentBooking: currentBooking,
+    sessions: sessions, bookingSession: bookingSession, currentSession: currentSession
   };
 })();
