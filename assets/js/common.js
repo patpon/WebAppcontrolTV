@@ -32,8 +32,8 @@ var RB = (function () {
     return {
       version: 1,
       updatedAt: new Date().toISOString(),
-      shop: { name: 'ระเบียงบัว', tagline: 'อาหาร • เครื่องดื่ม • คาราโอเกะ', logo: '', theme: { primary: '#d9a845', accent: '#e98aa6', bg: '#0e1f1a' } },
-      ticker: { enabled: true, text: 'ยินดีต้อนรับสู่ระเบียงบัว • สั่งอาหารเพิ่มได้ที่ปุ่มเรียกพนักงาน', speed: 60 },
+      shop: { name: 'ร้านระเบียงบัว ศรีสมาน', tagline: 'อาหาร • เครื่องดื่ม • คาราโอเกะ', logo: '', theme: { primary: '#d9a845', accent: '#e98aa6', bg: '#0e1f1a' } },
+      ticker: { enabled: true, text: 'ยินดีต้อนรับสู่ร้านระเบียงบัว ศรีสมาน • สั่งอาหารเพิ่มได้ที่ปุ่มเรียกพนักงาน', speed: 60 },
       settings: { pollSeconds: 30, showClock: true, karaokeApp: '', promoApp: 'de.ozerov.fully', idleMinutes: 10, idleIgnoreAudio: false, bridgeEnabled: false,
         maskNames: false, autoWelcome: true, dayStartHour: 6,
         sessions: defaultSessions() },

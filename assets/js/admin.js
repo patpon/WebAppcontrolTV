@@ -123,7 +123,7 @@ function updateSaveBtn() {
   const b = $('#saveBtn');
   b.disabled = !state.dirty;
   b.classList.toggle('dirty', state.dirty);
-  $('#brandName').textContent = state.cfg ? state.cfg.shop.name : 'ระเบียงบัว';
+  $('#brandName').textContent = state.cfg ? state.cfg.shop.name : 'ร้านระเบียงบัว ศรีสมาน';
 }
 
 /* tv.html?draft=1 reads this so staff can preview before publishing. Pending uploads use blob: URLs. */
