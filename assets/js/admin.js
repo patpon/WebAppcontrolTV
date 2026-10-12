@@ -170,13 +170,19 @@ function viewRooms() {
     <div class="card bulk">ทุกห้อง:
       <select id="bulkPl">${plOptions(c.playlists[0] && c.playlists[0].id)}</select>
       <button class="btn small" data-act="bulkPlaylist">ใช้เพลย์ลิสต์นี้</button>
-      <button class="btn small" data-act="bulkMode" data-mode="karaoke">คาราโอเกะ</button>
-      <button class="btn small" data-act="bulkMode" data-mode="auto">อัตโนมัติ</button>
+      ${c.settings.bridgeEnabled ? `<button class="btn small" data-act="bulkMode" data-mode="karaoke">คาราโอเกะ</button>
+      <button class="btn small" data-act="bulkMode" data-mode="auto">อัตโนมัติ</button>` : ''}
       <button class="btn small" data-act="bulkMode" data-mode="logo">โลโก้</button>
       <button class="btn small" data-act="bulkMode" data-mode="off">ปิดจอ</button>
     </div>
   </div>
   <div class="rooms-grid">${c.rooms.map(roomCard).join('')}</div>`;
+}
+
+// karaoke/auto drive the room's karaoke box over ADB — hidden unless the shop opts in to the bridge
+function roomModes(r) {
+  const bridge = state.cfg.settings.bridgeEnabled;
+  return MODES.filter(m => bridge || (m.id !== 'karaoke' && m.id !== 'auto') || m.id === r.mode);
 }
 
 function roomCard(r, i) {
@@ -203,7 +209,7 @@ function roomCard(r, i) {
   return `
   <article class="card room mode-${r.mode}">
     <div class="room-top"><input class="room-name" data-path="${p}.name" value="${esc(r.name)}" aria-label="ชื่อห้อง"></div>
-    <div class="seg">${MODES.map(m => `<button class="${r.mode === m.id ? 'on' : ''}" data-act="setMode" data-i="${i}" data-mode="${m.id}">${m.label}</button>`).join('')}</div>
+    <div class="seg">${roomModes(r).map(m => `<button class="${r.mode === m.id ? 'on' : ''}" data-act="setMode" data-i="${i}" data-mode="${m.id}">${m.label}</button>`).join('')}</div>
     ${body}
     <div class="room-actions">
       <a class="btn small" href="${esc(tvUrl(r.id))}" target="_blank" rel="noopener">${icon('tv')} จอจริง</a>
@@ -444,8 +450,9 @@ function viewSettings() {
     </section>
 
     <section class="card">
-      <h2>กล่อง Android: สลับแอปคาราโอเกะ ↔ โปรโมท</h2>
-      <p class="small-text muted" style="margin:0">ใช้ได้เมื่อเปิดโปรแกรม <b>bridge</b> บนคอมกลาง (ดู <code>bridge/README.md</code>) — ใช้กับโหมด “คาราโอเกะ” และ “อัตโนมัติ”</p>
+      <h2>(ขั้นสูง) สลับแอปบนกล่องคาราโอเกะ</h2>
+      <p class="small-text muted" style="margin:0">ใช้โปรแกรม <b>bridge</b> สั่งกล่องคาราโอเกะผ่าน ADB — <b>เปิดใช้เฉพาะเมื่อเจ้าของระบบคาราโอเกะอนุญาต</b> (ดู <code>bridge/README.md</code>)</p>
+      <label class="check"><input type="checkbox" data-path="settings.bridgeEnabled" data-rerender ${c.settings.bridgeEnabled ? 'checked' : ''}> เปิดโหมด “คาราโอเกะ” และ “อัตโนมัติ”</label>
       <div class="grid2">
         <label class="f">แอปคาราโอเกะ (package)<input data-path="settings.karaokeApp" value="${esc(c.settings.karaokeApp)}" placeholder="ดูจาก bridge -Status"></label>
         <label class="f">แอปแสดงโปรโมท (package)<input data-path="settings.promoApp" value="${esc(c.settings.promoApp)}"></label>

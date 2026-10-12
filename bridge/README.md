@@ -1,5 +1,7 @@
 # Bridge — สลับแอปคาราโอเกะ ↔ หน้าโปรโมท บนกล่อง Android
 
+> ⚠️ **ทางเลือกขั้นสูง** — bridge ต้องติดตั้งแอปและเปิด ADB บนกล่องของระบบคาราโอเกะ ถ้าระบบเป็นลิขสิทธิ์ของผู้ให้บริการ **ขออนุญาตเจ้าของระบบก่อน** ไม่งั้นแนะนำใช้กล่อง/แอปบนทีวีแยก (ดู README หลัก)
+
 โปรแกรมเล็กๆ รันบน **คอมกลาง** (เครื่อง server เพลง ซึ่งเปิดอยู่ตลอด) คุยกับกล่อง HK1 RBOX ทุกห้องผ่าน **ADB ทางสาย LAN**
 ไม่ต้องติดตั้งโปรแกรมเพิ่มนอกจาก ADB (ฟรีจาก Google) ใช้ PowerShell ที่มีใน Windows อยู่แล้ว
 
@@ -17,7 +19,7 @@
 
 ### 1) ทุกกล่อง Android
 1. ติดตั้ง **Fully Kiosk Browser** จาก Play Store (ตัวฟรีก็ได้)
-   - Start URL: `https://patpon.github.io/WebAppcontrolTV/tv.html?room=1` (เลขตามห้อง)
+   - Start URL: `https://patpon.github.io/WebAppcontrolTV/tv.html?room=V1` (เปลี่ยนตามห้อง)
    - Web Content Settings → Autoplay Videos = ON
    - Device Management → Keep Screen On = ON
 2. เปิด **ADB debugging**: Settings → About (เกี่ยวกับ) → กด **Build number** 7 ครั้ง → กลับไป Developer options → เปิด **USB debugging** (บางรุ่นมีเมนู **ADB over network / Network debugging** ให้เปิดด้วย)

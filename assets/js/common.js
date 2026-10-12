@@ -23,14 +23,18 @@ var RB = (function () {
   }
 
   function defaultConfig() {
-    var rooms = [];
-    for (var i = 1; i <= 10; i++) rooms.push(defaultRoom(i));
+    var rooms = ['V1', 'V2', 'V3', 'V4', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8'].map(function (id, i) {
+      var r = defaultRoom(i + 1);
+      r.id = id;
+      r.name = id;
+      return r;
+    });
     return {
       version: 1,
       updatedAt: new Date().toISOString(),
       shop: { name: 'ระเบียงบัว', tagline: 'อาหาร • เครื่องดื่ม • คาราโอเกะ', logo: '', theme: { primary: '#d9a845', accent: '#e98aa6', bg: '#0e1f1a' } },
       ticker: { enabled: true, text: 'ยินดีต้อนรับสู่ระเบียงบัว • สั่งอาหารเพิ่มได้ที่ปุ่มเรียกพนักงาน', speed: 60 },
-      settings: { pollSeconds: 30, showClock: true, karaokeApp: '', promoApp: 'de.ozerov.fully', idleMinutes: 10, idleIgnoreAudio: false },
+      settings: { pollSeconds: 30, showClock: true, karaokeApp: '', promoApp: 'de.ozerov.fully', idleMinutes: 10, idleIgnoreAudio: false, bridgeEnabled: false },
       reload: 0,
       media: [],
       menu: { categories: [] },

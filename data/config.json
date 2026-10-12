@@ -5,14 +5,26 @@
     "name": "ระเบียงบัว",
     "tagline": "อาหาร • เครื่องดื่ม • คาราโอเกะ",
     "logo": "",
-    "theme": { "primary": "#d9a845", "accent": "#e98aa6", "bg": "#0e1f1a" }
+    "theme": {
+      "primary": "#d9a845",
+      "accent": "#e98aa6",
+      "bg": "#0e1f1a"
+    }
   },
   "ticker": {
     "enabled": true,
     "text": "ยินดีต้อนรับสู่ระเบียงบัว  •  Happy Hour ทุกวัน 17:00–20:00 น. เบียร์ถัง ลด 20%  •  สั่งอาหารเพิ่ม กดปุ่มเรียกพนักงานได้เลย  •  จองห้องล่วงหน้า โทร 0xx-xxx-xxxx",
     "speed": 70
   },
-  "settings": { "pollSeconds": 30, "showClock": true },
+  "settings": {
+    "pollSeconds": 30,
+    "showClock": true,
+    "karaokeApp": "",
+    "promoApp": "de.ozerov.fully",
+    "idleMinutes": 10,
+    "idleIgnoreAudio": false,
+    "bridgeEnabled": false
+  },
   "reload": 0,
   "media": [],
   "menu": {
@@ -21,24 +33,120 @@
         "id": "cat_rec",
         "name": "เมนูแนะนำ",
         "items": [
-          { "id": "mi_1", "name": "ปลากะพงทอดน้ำปลา", "desc": "ปลากะพงทั้งตัว ทอดกรอบ ราดน้ำปลาหวาน", "price": 380, "image": "", "tag": "แนะนำ", "available": true },
-          { "id": "mi_2", "name": "ต้มยำกุ้งน้ำข้น", "desc": "กุ้งแม่น้ำตัวโต", "price": 250, "image": "", "tag": "ขายดี", "available": true },
-          { "id": "mi_3", "name": "ยำรวมมิตรทะเล", "desc": "เผ็ดจัดจ้าน", "price": 220, "image": "", "tag": "เผ็ด", "available": true },
-          { "id": "mi_4", "name": "คอหมูย่าง", "desc": "ย่างเตาถ่าน น้ำจิ้มแจ่ว", "price": 159, "image": "", "tag": "", "available": true },
-          { "id": "mi_5", "name": "เฟรนช์ฟรายส์ชีส", "desc": "", "price": 99, "image": "", "tag": "", "available": true },
-          { "id": "mi_6", "name": "ไก่ทอดเกลือ", "desc": "", "price": 139, "image": "", "tag": "ใหม่", "available": true }
+          {
+            "id": "mi_1",
+            "name": "ปลากะพงทอดน้ำปลา",
+            "desc": "ปลากะพงทั้งตัว ทอดกรอบ ราดน้ำปลาหวาน",
+            "price": 380,
+            "image": "",
+            "tag": "แนะนำ",
+            "available": true
+          },
+          {
+            "id": "mi_2",
+            "name": "ต้มยำกุ้งน้ำข้น",
+            "desc": "กุ้งแม่น้ำตัวโต",
+            "price": 250,
+            "image": "",
+            "tag": "ขายดี",
+            "available": true
+          },
+          {
+            "id": "mi_3",
+            "name": "ยำรวมมิตรทะเล",
+            "desc": "เผ็ดจัดจ้าน",
+            "price": 220,
+            "image": "",
+            "tag": "เผ็ด",
+            "available": true
+          },
+          {
+            "id": "mi_4",
+            "name": "คอหมูย่าง",
+            "desc": "ย่างเตาถ่าน น้ำจิ้มแจ่ว",
+            "price": 159,
+            "image": "",
+            "tag": "",
+            "available": true
+          },
+          {
+            "id": "mi_5",
+            "name": "เฟรนช์ฟรายส์ชีส",
+            "desc": "",
+            "price": 99,
+            "image": "",
+            "tag": "",
+            "available": true
+          },
+          {
+            "id": "mi_6",
+            "name": "ไก่ทอดเกลือ",
+            "desc": "",
+            "price": 139,
+            "image": "",
+            "tag": "ใหม่",
+            "available": true
+          }
         ]
       },
       {
         "id": "cat_drink",
         "name": "เครื่องดื่ม",
         "items": [
-          { "id": "mi_7", "name": "เบียร์ถัง (ทาวเวอร์ 3 ลิตร)", "desc": "", "price": 590, "image": "", "tag": "โปรฯ", "available": true },
-          { "id": "mi_8", "name": "เบียร์ขวดใหญ่", "desc": "", "price": 95, "image": "", "tag": "", "available": true },
-          { "id": "mi_9", "name": "โซดา / น้ำแข็ง", "desc": "", "price": 25, "image": "", "tag": "", "available": true },
-          { "id": "mi_10", "name": "ค็อกเทลบัวแดง", "desc": "Signature ของร้าน", "price": 180, "image": "", "tag": "แนะนำ", "available": true },
-          { "id": "mi_11", "name": "น้ำอัดลม", "desc": "", "price": 35, "image": "", "tag": "", "available": true },
-          { "id": "mi_12", "name": "น้ำเปล่า", "desc": "", "price": 20, "image": "", "tag": "", "available": true }
+          {
+            "id": "mi_7",
+            "name": "เบียร์ถัง (ทาวเวอร์ 3 ลิตร)",
+            "desc": "",
+            "price": 590,
+            "image": "",
+            "tag": "โปรฯ",
+            "available": true
+          },
+          {
+            "id": "mi_8",
+            "name": "เบียร์ขวดใหญ่",
+            "desc": "",
+            "price": 95,
+            "image": "",
+            "tag": "",
+            "available": true
+          },
+          {
+            "id": "mi_9",
+            "name": "โซดา / น้ำแข็ง",
+            "desc": "",
+            "price": 25,
+            "image": "",
+            "tag": "",
+            "available": true
+          },
+          {
+            "id": "mi_10",
+            "name": "ค็อกเทลบัวแดง",
+            "desc": "Signature ของร้าน",
+            "price": 180,
+            "image": "",
+            "tag": "แนะนำ",
+            "available": true
+          },
+          {
+            "id": "mi_11",
+            "name": "น้ำอัดลม",
+            "desc": "",
+            "price": 35,
+            "image": "",
+            "tag": "",
+            "available": true
+          },
+          {
+            "id": "mi_12",
+            "name": "น้ำเปล่า",
+            "desc": "",
+            "price": 20,
+            "image": "",
+            "tag": "",
+            "available": true
+          }
         ]
       }
     ]
@@ -48,31 +156,181 @@
       "id": "pl_main",
       "name": "เพลย์ลิสต์หลัก",
       "items": [
-        { "id": "it_1", "type": "promo", "eyebrow": "ยินดีต้อนรับ", "title": "ระเบียงบัว", "subtitle": "อาหารอร่อย เพลงเพราะ บรรยากาศริมน้ำ", "price": "", "bg": "", "color": "", "duration": 8 },
-        { "id": "it_2", "type": "promo", "eyebrow": "HAPPY HOUR", "title": "เบียร์ถัง ลด 20%", "subtitle": "ทุกวัน 17:00 – 20:00 น.", "price": 472, "bg": "", "color": "#e98aa6", "duration": 10 },
-        { "id": "it_3", "type": "menu", "category": "*", "perPage": 6, "duration": 12 },
-        { "id": "it_4", "type": "promo", "eyebrow": "วันเกิด", "title": "ฉลองวันเกิดที่ระเบียงบัว", "subtitle": "รับฟรี เค้กวันเกิด เมื่อจองห้อง VIP", "price": "", "bg": "", "color": "", "duration": 10 }
+        {
+          "id": "it_1",
+          "type": "promo",
+          "eyebrow": "ยินดีต้อนรับ",
+          "title": "ระเบียงบัว",
+          "subtitle": "อาหารอร่อย เพลงเพราะ บรรยากาศริมน้ำ",
+          "price": "",
+          "bg": "",
+          "color": "",
+          "duration": 8
+        },
+        {
+          "id": "it_2",
+          "type": "promo",
+          "eyebrow": "HAPPY HOUR",
+          "title": "เบียร์ถัง ลด 20%",
+          "subtitle": "ทุกวัน 17:00 – 20:00 น.",
+          "price": 472,
+          "bg": "",
+          "color": "#e98aa6",
+          "duration": 10
+        },
+        {
+          "id": "it_3",
+          "type": "menu",
+          "category": "*",
+          "perPage": 6,
+          "duration": 12
+        },
+        {
+          "id": "it_4",
+          "type": "promo",
+          "eyebrow": "วันเกิด",
+          "title": "ฉลองวันเกิดที่ระเบียงบัว",
+          "subtitle": "รับฟรี เค้กวันเกิด เมื่อจองห้อง VIP",
+          "price": "",
+          "bg": "",
+          "color": "",
+          "duration": 10
+        }
       ]
     },
     {
       "id": "pl_late",
       "name": "ช่วงดึก (หลัง 22:00)",
       "items": [
-        { "id": "it_5", "type": "promo", "eyebrow": "LATE NIGHT", "title": "ข้าวต้มรอบดึก", "subtitle": "เสิร์ฟถึงตี 2", "price": 89, "bg": "", "color": "", "duration": 10 },
-        { "id": "it_6", "type": "menu", "category": "cat_drink", "perPage": 6, "duration": 12 }
+        {
+          "id": "it_5",
+          "type": "promo",
+          "eyebrow": "LATE NIGHT",
+          "title": "ข้าวต้มรอบดึก",
+          "subtitle": "เสิร์ฟถึงตี 2",
+          "price": 89,
+          "bg": "",
+          "color": "",
+          "duration": 10
+        },
+        {
+          "id": "it_6",
+          "type": "menu",
+          "category": "cat_drink",
+          "perPage": 6,
+          "duration": 12
+        }
       ]
     }
   ],
   "rooms": [
-    { "id": "1", "name": "ห้อง 1", "mode": "playlist", "playlist": "pl_main", "welcome": "", "message": "", "reload": 0 },
-    { "id": "2", "name": "ห้อง 2", "mode": "playlist", "playlist": "pl_main", "welcome": "", "message": "", "reload": 0 },
-    { "id": "3", "name": "ห้อง 3", "mode": "playlist", "playlist": "pl_main", "welcome": "", "message": "", "reload": 0 },
-    { "id": "4", "name": "ห้อง 4", "mode": "playlist", "playlist": "pl_main", "welcome": "", "message": "", "reload": 0 },
-    { "id": "5", "name": "ห้อง 5", "mode": "playlist", "playlist": "pl_main", "welcome": "", "message": "", "reload": 0 },
-    { "id": "6", "name": "ห้อง 6", "mode": "playlist", "playlist": "pl_main", "welcome": "", "message": "", "reload": 0 },
-    { "id": "7", "name": "ห้อง 7", "mode": "playlist", "playlist": "pl_main", "welcome": "", "message": "", "reload": 0 },
-    { "id": "8", "name": "ห้อง 8", "mode": "playlist", "playlist": "pl_main", "welcome": "", "message": "", "reload": 0 },
-    { "id": "9", "name": "VIP 1", "mode": "playlist", "playlist": "pl_main", "welcome": "", "message": "", "reload": 0 },
-    { "id": "10", "name": "VIP 2", "mode": "playlist", "playlist": "pl_main", "welcome": "", "message": "", "reload": 0 }
+    {
+      "id": "V1",
+      "name": "V1",
+      "mode": "playlist",
+      "playlist": "pl_main",
+      "welcome": "",
+      "message": "",
+      "reload": 0
+    },
+    {
+      "id": "V2",
+      "name": "V2",
+      "mode": "playlist",
+      "playlist": "pl_main",
+      "welcome": "",
+      "message": "",
+      "reload": 0
+    },
+    {
+      "id": "V3",
+      "name": "V3",
+      "mode": "playlist",
+      "playlist": "pl_main",
+      "welcome": "",
+      "message": "",
+      "reload": 0
+    },
+    {
+      "id": "V4",
+      "name": "V4",
+      "mode": "playlist",
+      "playlist": "pl_main",
+      "welcome": "",
+      "message": "",
+      "reload": 0
+    },
+    {
+      "id": "A1",
+      "name": "A1",
+      "mode": "playlist",
+      "playlist": "pl_main",
+      "welcome": "",
+      "message": "",
+      "reload": 0
+    },
+    {
+      "id": "A2",
+      "name": "A2",
+      "mode": "playlist",
+      "playlist": "pl_main",
+      "welcome": "",
+      "message": "",
+      "reload": 0
+    },
+    {
+      "id": "A3",
+      "name": "A3",
+      "mode": "playlist",
+      "playlist": "pl_main",
+      "welcome": "",
+      "message": "",
+      "reload": 0
+    },
+    {
+      "id": "A4",
+      "name": "A4",
+      "mode": "playlist",
+      "playlist": "pl_main",
+      "welcome": "",
+      "message": "",
+      "reload": 0
+    },
+    {
+      "id": "A5",
+      "name": "A5",
+      "mode": "playlist",
+      "playlist": "pl_main",
+      "welcome": "",
+      "message": "",
+      "reload": 0
+    },
+    {
+      "id": "A6",
+      "name": "A6",
+      "mode": "playlist",
+      "playlist": "pl_main",
+      "welcome": "",
+      "message": "",
+      "reload": 0
+    },
+    {
+      "id": "A7",
+      "name": "A7",
+      "mode": "playlist",
+      "playlist": "pl_main",
+      "welcome": "",
+      "message": "",
+      "reload": 0
+    },
+    {
+      "id": "A8",
+      "name": "A8",
+      "mode": "playlist",
+      "playlist": "pl_main",
+      "welcome": "",
+      "message": "",
+      "reload": 0
+    }
   ]
 }
