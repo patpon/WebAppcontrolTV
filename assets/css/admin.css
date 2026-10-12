@@ -126,6 +126,8 @@ textarea { resize: vertical; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { font: inherit; font-size: 12px; padding: 3px 10px; border-radius: 99px; border: 1px dashed var(--line); background: none; color: var(--muted); cursor: pointer; }
 .chip:hover { color: var(--ink); border-color: var(--muted); }
+.bk-line { font-size: 12.5px; padding: 5px 10px; border-radius: 8px; background: color-mix(in srgb, var(--lotus) 12%, transparent); }
+.room.mode-lobby, .room.mode-bookings { border-top-color: var(--lotus); }
 .room-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 8px; border-top: 1px dashed var(--line); }
 
 /* ---------- playlists ---------- */

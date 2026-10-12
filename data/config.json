@@ -23,7 +23,10 @@
     "promoApp": "de.ozerov.fully",
     "idleMinutes": 10,
     "idleIgnoreAudio": false,
-    "bridgeEnabled": false
+    "bridgeEnabled": false,
+    "maskNames": false,
+    "autoWelcome": true,
+    "dayStartHour": 6
   },
   "reload": 0,
   "media": [],
@@ -332,5 +335,17 @@
       "message": "",
       "reload": 0
     }
-  ]
+  ],
+  "screens": [
+    {
+      "id": "lobby",
+      "name": "ทางเข้าร้าน",
+      "mode": "lobby",
+      "playlist": "pl_main",
+      "welcome": "",
+      "message": "",
+      "reload": 0
+    }
+  ],
+  "bookings": []
 }

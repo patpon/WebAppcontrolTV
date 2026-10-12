@@ -76,6 +76,7 @@
     applyHud();
     applyTicker();
     applyWelcome();
+    renderBoard();
 
     var plId = FORCE_PL || room.playlist;
     var newSig = JSON.stringify([room.mode, room.message, plId, RB.byId(cfg.playlists, plId), cfg.menu, cfg.media, cfg.shop]);
@@ -139,12 +140,24 @@
     }, 50);
   }
 
+  /* Manual welcome text wins; otherwise karaoke rooms greet today's booking automatically. */
+  function welcomeText() {
+    var t = (room.welcome || '').trim();
+    if (t || !cfg.settings.autoWelcome || cfg.rooms.indexOf(room) < 0) return t;
+    var b = RB.currentBooking(cfg, room.id, new Date());
+    if (!b || !b.name) return '';
+    return RB.displayName(b.name, cfg.settings.maskNames) + (b.note ? ' · ' + b.note : '');
+  }
+
+  var lastWelcome = null;
   function applyWelcome() {
-    var text = (room.welcome || '').trim();
+    var text = isPlaylistMode() ? welcomeText() : '';
+    if (text === lastWelcome) return; // re-arming on every poll would show the banner every 30 s
+    lastWelcome = text;
     var box = $('welcome');
     $('welcomeText').textContent = text;
     clearInterval(welcomeTimer);
-    if (!text || !isPlaylistMode()) { box.classList.remove('on'); return; }
+    if (!text) { box.classList.remove('on'); return; }
     var cycle = function () {
       box.classList.add('on');
       setTimeout(function () { box.classList.remove('on'); }, 15000);
@@ -154,7 +167,45 @@
   }
 
   // 'auto' = playlist while the room is idle; the bridge on the central PC switches to the karaoke app on remote input
-  function isPlaylistMode() { return room.mode === 'playlist' || room.mode === 'auto'; }
+  function isPlaylistMode() { return room.mode === 'playlist' || room.mode === 'auto' || room.mode === 'lobby'; }
+
+  /* ---------- entrance booking board (modes: lobby = board + slides, bookings = board only) ---------- */
+  var boardPage = 0, boardTimer = null, boardHtml = '';
+  function renderBoard() {
+    var on = room.mode === 'lobby' || room.mode === 'bookings';
+    document.body.classList.toggle('layout-lobby', room.mode === 'lobby');
+    document.body.classList.toggle('layout-bookings', room.mode === 'bookings');
+    $('board').classList.toggle('hidden', !on);
+    if (!on) { clearInterval(boardTimer); boardTimer = null; boardHtml = ''; return; }
+
+    var now = new Date(), startHour = cfg.settings.dayStartHour;
+    var date = RB.businessDate(now, startHour);
+    var list = RB.bookingsFor(cfg, date);
+    var nm = RB.nowMinutes(now, startHour);
+    var per = room.mode === 'bookings' ? 9 : 7;
+    var pages = Math.max(1, Math.ceil(list.length / per));
+    if (boardPage >= pages) boardPage = 0;
+
+    var rows = list.slice(boardPage * per, boardPage * per + per).map(function (b, i) {
+      var t = RB.bookingMinutes(b.time, startHour);
+      var cls = b.status === 'arrived' ? 'arrived' : (t - nm <= 60 && nm - t <= 30 ? 'soon' : (nm > t + 30 ? 'late' : ''));
+      var r = RB.findRoom(cfg, b.room);
+      var sub = [b.note, b.status === 'arrived' ? 'มาแล้ว' : ''].filter(Boolean).join(' · ');
+      return '<div class="bk ' + cls + '" style="animation-delay:' + (i * 0.06) + 's">' +
+        '<span class="t">' + esc(b.time) + '</span>' +
+        '<span class="n">' + esc(RB.displayName(b.name, cfg.settings.maskNames)) + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span>' +
+        '<span class="g">' + (b.guests ? esc(b.guests) + ' ท่าน' : '') + '</span>' +
+        '<span class="r">' + esc(r ? r.name : (b.room || '—')) + '</span></div>';
+    }).join('');
+
+    var dateText = new Date(date + 'T12:00:00').toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long' });
+    var html = '<div class="board-head"><h2>การจองวันนี้</h2><span class="date">' + esc(dateText) + '</span></div>' +
+      (list.length ? '<div class="board-list">' + rows + '</div>'
+                   : '<div class="board-empty"><b>ยังมีห้องว่าง</b><span>Walk-in ยินดีต้อนรับ</span></div>') +
+      (pages > 1 ? '<div class="board-page">หน้า ' + (boardPage + 1) + ' / ' + pages + '</div>' : '');
+    if (html !== boardHtml) { boardHtml = html; $('board').innerHTML = html; }
+    if (!boardTimer) boardTimer = setInterval(function () { boardPage++; renderBoard(); }, 8000);
+  }
 
   function tickClock() {
     var d = new Date();
@@ -193,8 +244,12 @@
     }
     hideScreen();
     $('singHint').classList.toggle('hidden', room.mode !== 'auto');
+    if (room.mode === 'bookings') return;
     buildQueue();
-    if (!queue.length) return showScreen(logoScreen('ยังไม่มีสื่อในเพลย์ลิสต์นี้'));
+    if (!queue.length) {
+      if (room.mode === 'lobby') { $('stage').innerHTML = '<div class="slide show s-logo">' + logoScreen() + '</div>'; return; }
+      return showScreen(logoScreen('ยังไม่มีสื่อในเพลย์ลิสต์นี้'));
+    }
     idx = -1;
     next();
   }

@@ -13,6 +13,7 @@ const state = {
   localUrls: new Map(), // repo path -> blob: URL     (instant previews, kept for the session)
   deletes: new Set(),   // repo paths to remove on next save
   plSel: null,
+  bkDate: null,
   busy: false
 };
 
@@ -24,6 +25,20 @@ const MODES = [
   { id: 'logo', label: 'โลโก้' },
   { id: 'off', label: 'ปิดจอ' }
 ];
+const SCREEN_MODES = [
+  { id: 'lobby', label: 'จอง+สไลด์' },
+  { id: 'bookings', label: 'รายการจอง' },
+  { id: 'playlist', label: 'เล่นสื่อ' },
+  { id: 'message', label: 'ข้อความ' },
+  { id: 'logo', label: 'โลโก้' },
+  { id: 'off', label: 'ปิดจอ' }
+];
+const BK_STATUS = [
+  { id: 'booked', label: 'จองแล้ว' },
+  { id: 'arrived', label: 'มาแล้ว' },
+  { id: 'cancelled', label: 'ยกเลิก' }
+];
+const NOTE_TPL = ['สุขสันต์วันเกิด', 'ครบรอบแต่งงาน', 'เลี้ยงบริษัท', 'เลี้ยงรุ่น', 'VIP'];
 const MSG_TEMPLATES = ['เหลือเวลาอีก 15 นาที', 'หมดเวลาใช้บริการแล้ว\nกรุณาติดต่อพนักงาน', 'ห้องนี้ถูกจองแล้ว', 'ขอบคุณที่ใช้บริการ\nแล้วพบกันใหม่'];
 const TAGS = ['แนะนำ', 'ขายดี', 'ใหม่', 'เผ็ด', 'โปรฯ'];
 const TYPE_LABEL = { image: 'รูปภาพ', video: 'วิดีโอ', menu: 'เมนูอาหาร', promo: 'โปรโมชั่น' };
@@ -147,7 +162,7 @@ function fmtSize(b) { return b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Ma
 /* ---------- rendering ---------- */
 function render() {
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === state.tab));
-  const views = { rooms: viewRooms, playlists: viewPlaylists, menu: viewMenu, media: viewMedia, settings: viewSettings };
+  const views = { rooms: viewRooms, bookings: viewBookings, playlists: viewPlaylists, menu: viewMenu, media: viewMedia, settings: viewSettings };
   $('#view').innerHTML = (state.store && state.canPush ? '' : connectBanner()) + views[state.tab]();
   updateSaveBtn();
 }
@@ -176,7 +191,7 @@ function viewRooms() {
       <button class="btn small" data-act="bulkMode" data-mode="off">ปิดจอ</button>
     </div>
   </div>
-  <div class="rooms-grid">${c.rooms.map(roomCard).join('')}</div>`;
+  <div class="rooms-grid">${c.rooms.map((r, i) => roomCard(r, i, 'rooms')).join('')}</div>`;
 }
 
 // karaoke/auto drive the room's karaoke box over ADB — hidden unless the shop opts in to the bridge
@@ -185,20 +200,30 @@ function roomModes(r) {
   return MODES.filter(m => bridge || (m.id !== 'karaoke' && m.id !== 'auto') || m.id === r.mode);
 }
 
-function roomCard(r, i) {
-  const p = `rooms.${i}`;
+function todayBookings(roomId) {
+  const c = state.cfg;
+  return RB.bookingsFor(c, RB.businessDate(new Date(), c.settings.dayStartHour)).filter(b => String(b.room) === String(roomId));
+}
+
+/* coll = 'rooms' (karaoke rooms) or 'screens' (entrance / special screens) */
+function roomCard(r, i, coll) {
+  const p = `${coll}.${i}`;
+  const at = `data-coll="${coll}" data-i="${i}"`;
+  const modes = coll === 'screens' ? SCREEN_MODES : roomModes(r);
   let body = '';
-  if (r.mode === 'playlist' || r.mode === 'auto') {
+  if (r.mode === 'playlist' || r.mode === 'auto' || r.mode === 'lobby') {
     body = (r.mode === 'auto'
       ? `<p class="muted small-text" style="margin:0">ไม่มีคนกดรีโมต ${esc(state.cfg.settings.idleMinutes)} นาที → แสดงโปรโมท · กดรีโมตปุ่มไหนก็ได้ → กลับแอปคาราโอเกะ</p>`
-      : '') + `
+      : r.mode === 'lobby' ? `<p class="muted small-text" style="margin:0">ซ้าย: รายการจองวันนี้ · ขวา: สไลด์จากเพลย์ลิสต์</p>` : '') + `
       <label class="f">เพลย์ลิสต์<select data-path="${p}.playlist">${plOptions(r.playlist)}</select></label>
       <label class="f">ข้อความต้อนรับ (เด้งขึ้นทุก 1 นาที)
         <input data-path="${p}.welcome" value="${esc(r.welcome)}" placeholder="เช่น สุขสันต์วันเกิดคุณเอ"></label>`;
   } else if (r.mode === 'message') {
     body = `
       <label class="f">ข้อความเต็มจอ<textarea rows="3" data-path="${p}.message" placeholder="พิมพ์ข้อความ">${esc(r.message)}</textarea></label>
-      <div class="chips">${MSG_TEMPLATES.map((t, k) => `<button class="chip" data-act="msgTpl" data-i="${i}" data-k="${k}">${esc(t.replace('\n', ' '))}</button>`).join('')}</div>`;
+      <div class="chips">${MSG_TEMPLATES.map((t, k) => `<button class="chip" data-act="msgTpl" ${at} data-k="${k}">${esc(t.replace('\n', ' '))}</button>`).join('')}</div>`;
+  } else if (r.mode === 'bookings') {
+    body = `<p class="muted small-text">แสดงรายการจองวันนี้เต็มจอ (แก้ในตารางด้านบน)</p>`;
   } else if (r.mode === 'karaoke') {
     body = `<p class="muted small-text">เปิดแอปคาราโอเกะบนกล่อง (ลูกค้ากำลังใช้ห้อง)</p>`;
   } else if (r.mode === 'logo') {
@@ -206,17 +231,70 @@ function roomCard(r, i) {
   } else {
     body = `<p class="muted small-text">จอดำ</p>`;
   }
+  const bks = coll === 'rooms' ? todayBookings(r.id) : [];
+  const bkLine = bks.length
+    ? `<div class="bk-line">จองวันนี้: ${bks.map(b => `${esc(b.time)} ${esc(b.name)}${b.guests ? ` (${esc(b.guests)})` : ''}`).join(', ')}</div>` : '';
   return `
   <article class="card room mode-${r.mode}">
     <div class="room-top"><input class="room-name" data-path="${p}.name" value="${esc(r.name)}" aria-label="ชื่อห้อง"></div>
-    <div class="seg">${roomModes(r).map(m => `<button class="${r.mode === m.id ? 'on' : ''}" data-act="setMode" data-i="${i}" data-mode="${m.id}">${m.label}</button>`).join('')}</div>
+    ${bkLine}
+    <div class="seg">${modes.map(m => `<button class="${r.mode === m.id ? 'on' : ''}" data-act="setMode" ${at} data-mode="${m.id}">${m.label}</button>`).join('')}</div>
     ${body}
     <div class="room-actions">
       <a class="btn small" href="${esc(tvUrl(r.id))}" target="_blank" rel="noopener">${icon('tv')} จอจริง</a>
       <a class="btn small" href="${esc(tvUrl(r.id, '&draft=1'))}" target="_blank" rel="noopener">${icon('eye')} ตัวอย่าง</a>
-      <button class="btn small" data-act="reloadRoom" data-i="${i}" title="สั่งให้กล่อง Android ห้องนี้โหลดหน้าใหม่">${icon('refresh')} รีโหลดจอ</button>
+      <button class="btn small" data-act="reloadRoom" ${at} title="สั่งให้จอนี้โหลดหน้าใหม่">${icon('refresh')} รีโหลดจอ</button>
+      ${coll === 'screens' ? `<button class="btn icon small danger" data-act="delScreen" data-i="${i}" title="ลบจอนี้">${icon('trash')}</button>` : ''}
     </div>
   </article>`;
+}
+
+/* Bookings + special screens */
+function viewBookings() {
+  const c = state.cfg, h = c.settings.dayStartHour;
+  const date = state.bkDate || (state.bkDate = RB.businessDate(new Date(), h));
+  const list = c.bookings.map((b, i) => ({ b, i })).filter(x => x.b.date === date)
+    .sort((x, y) => RB.bookingMinutes(x.b.time, h) - RB.bookingMinutes(y.b.time, h));
+  const active = list.filter(x => x.b.status !== 'cancelled');
+  const guests = active.reduce((n, x) => n + (Number(x.b.guests) || 0), 0);
+  const roomOpts = sel => '<option value="">— ไม่ระบุห้อง —</option>' +
+    c.rooms.map(r => `<option value="${esc(r.id)}" ${String(r.id) === String(sel) ? 'selected' : ''}>${esc(r.name)}</option>`).join('');
+  const lobby = c.screens[0];
+  return `
+  <div class="page-head">
+    <div><h1>การจอง &amp; จอทางเข้า</h1><p>รายชื่อจองขึ้นบนจอทางเข้า และจอห้องที่ถูกจองจะขึ้น “ยินดีต้อนรับ + ชื่อ” ให้อัตโนมัติ</p></div>
+    <div class="row"><input type="date" id="bkDate" value="${esc(date)}" style="width:auto"><button class="btn small" data-act="bkToday">วันนี้</button>
+      ${lobby ? `<a class="btn small" href="${esc(tvUrl(lobby.id, '&draft=1'))}" target="_blank" rel="noopener">${icon('eye')} ดูจอทางเข้า</a>` : ''}</div>
+  </div>
+  <div class="banner small-text">ข้อมูลบน GitHub เป็นสาธารณะ — ใส่แค่ <b>ชื่อที่จะโชว์บนจอ</b> (เช่น คุณเอ) <b>ห้ามใส่เบอร์โทร</b> · การจองที่เก่ากว่าเมื่อวานจะถูกลบอัตโนมัติตอนบันทึก</div>
+  <section class="card cat">
+    <div class="cat-head"><h2 style="flex:1;font-size:17px">${active.length} การจอง · ${guests} ท่าน</h2>
+      <button class="btn primary small" data-act="addBooking">${icon('plus')} เพิ่มการจอง</button></div>
+    <table class="menu-table bk-table">
+      <thead><tr><th>เวลา</th><th>ชื่อ (โชว์บนจอ)</th><th>ห้อง</th><th>คน</th><th>โอกาส / หมายเหตุ</th><th>สถานะ</th><th></th></tr></thead>
+      <tbody>${list.map(({ b, i }) => `
+        <tr class="${b.status === 'cancelled' ? 'na' : ''}" data-bk="${esc(b.id)}">
+          <td style="width:120px"><input type="time" data-path="bookings.${i}.time" data-rerender value="${esc(b.time)}"></td>
+          <td><input data-path="bookings.${i}.name" value="${esc(b.name)}" placeholder="เช่น คุณเอ"></td>
+          <td style="width:140px"><select data-path="bookings.${i}.room" data-rerender>${roomOpts(b.room)}</select></td>
+          <td style="width:80px"><input type="number" min="0" data-type="num" data-path="bookings.${i}.guests" value="${esc(b.guests)}"></td>
+          <td><input list="noteList" data-path="bookings.${i}.note" value="${esc(b.note)}" placeholder="เช่น สุขสันต์วันเกิด"></td>
+          <td style="width:120px"><select data-path="bookings.${i}.status" data-rerender>${BK_STATUS.map(st => `<option value="${st.id}" ${b.status === st.id ? 'selected' : ''}>${st.label}</option>`).join('')}</select></td>
+          <td><button class="btn icon small danger" data-act="delBooking" data-i="${i}" title="ลบ">${icon('trash')}</button></td>
+        </tr>`).join('') || '<tr><td colspan="7" class="empty">ยังไม่มีการจองวันนี้</td></tr>'}</tbody>
+    </table>
+    <datalist id="noteList">${NOTE_TPL.map(t => `<option value="${t}">`).join('')}</datalist>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-top:14px">
+      <label class="check"><input type="checkbox" data-path="settings.autoWelcome" ${c.settings.autoWelcome ? 'checked' : ''}> จอห้องที่ถูกจองขึ้น “ยินดีต้อนรับ + ชื่อ + โอกาส” อัตโนมัติ (1 ชม. ก่อนเวลาจอง ถึง 4 ชม. หลัง)</label>
+      <label class="check"><input type="checkbox" data-path="settings.maskNames" ${c.settings.maskNames ? 'checked' : ''}> ย่อนามสกุลบนจอ (สมชาย ใจดี → สมชาย ใ.)</label>
+    </div>
+  </section>
+
+  <div class="page-head" style="margin-top:28px">
+    <div><h1 style="font-size:22px">จอพิเศษ</h1><p>จอทางเข้า / หน้าร้าน — เปิดลิงก์ “จอจริง” บนทีวีที่ทางเข้า</p></div>
+    <button class="btn" data-act="addScreen">${icon('plus')} เพิ่มจอพิเศษ</button>
+  </div>
+  <div class="rooms-grid">${c.screens.map((sc, i) => roomCard(sc, i, 'screens')).join('') || '<div class="card empty">ยังไม่มีจอพิเศษ</div>'}</div>`;
 }
 
 /* Playlists */
@@ -237,7 +315,7 @@ function viewPlaylists() {
   let pi = c.playlists.findIndex(p => p.id === state.plSel);
   if (pi < 0 && c.playlists.length) { pi = 0; state.plSel = c.playlists[0].id; }
   const pl = c.playlists[pi];
-  const used = id => c.rooms.filter(r => r.playlist === id).length;
+  const used = id => c.rooms.concat(c.screens).filter(r => r.playlist === id && r.mode !== 'bookings').length;
   return `
   <div class="page-head"><div><h1>เพลย์ลิสต์</h1><p>ชุดสื่อที่วนเล่นบนจอ — 1 ห้องเลือกได้ 1 เพลย์ลิสต์</p></div>
     <button class="btn" data-act="addPlaylist">${icon('plus')} เพลย์ลิสต์ใหม่</button></div>
@@ -438,7 +516,9 @@ function viewSettings() {
     <section class="card">
       <h2>ห้อง &amp; ลิงก์สำหรับกล่อง Android</h2>
       <p class="small-text muted" style="margin:0">ตั้งให้กล่องแต่ละห้องเปิดลิงก์ของห้องนั้น (ดูวิธีใน README)</p>
-      <div class="url-list">${c.rooms.map((r, i) => `
+      <div class="url-list">${c.screens.map(sc => `
+        <div class="u"><b style="min-width:64px">${esc(sc.name)}</b><code>${esc(tvUrl(sc.id))}</code>
+          <button class="btn icon small" data-act="copy" data-text="${esc(tvUrl(sc.id))}" title="คัดลอก">${icon('link')}</button></div>`).join('')}${c.rooms.map((r, i) => `
         <div class="u"><b style="min-width:64px">${esc(r.name)}</b><code>${esc(tvUrl(r.id))}</code>
           <button class="btn icon small" data-act="copy" data-text="${esc(tvUrl(r.id))}" title="คัดลอก">${icon('link')}</button>
           <button class="btn icon small danger" data-act="delRoom" data-i="${i}" title="ลบห้อง">${icon('trash')}</button></div>`).join('')}</div>
@@ -594,6 +674,11 @@ async function save() {
       return;
     }
     const cfg = state.cfg;
+    // bookings are personal data in a public repo: keep only yesterday onwards
+    const y = new Date();
+    y.setDate(y.getDate() - 1);
+    const keepFrom = RB.businessDate(y, cfg.settings.dayStartHour);
+    cfg.bookings = cfg.bookings.filter(b => b.date >= keepFrom);
     cfg.version = Math.max(Number(remote && remote.version) || 0, Number(cfg.version) || 0) + 1;
     cfg.updatedAt = new Date().toISOString();
 
@@ -639,9 +724,33 @@ function change(fn) { fn(state.cfg); markDirty(); render(); }
 const actions = {
   save,
   tab: d => { state.tab = d.tab; render(); },
-  setMode: d => change(c => { c.rooms[d.i].mode = d.mode; }),
-  msgTpl: d => change(c => { c.rooms[d.i].message = MSG_TEMPLATES[d.k]; }),
-  reloadRoom: d => change(c => { c.rooms[d.i].reload = Date.now(); toast('สั่งรีโหลดแล้ว — กดบันทึกเพื่อส่งคำสั่ง'); }),
+  setMode: d => change(c => { c[d.coll || 'rooms'][d.i].mode = d.mode; }),
+  msgTpl: d => change(c => { c[d.coll || 'rooms'][d.i].message = MSG_TEMPLATES[d.k]; }),
+  reloadRoom: d => change(c => { c[d.coll || 'rooms'][d.i].reload = Date.now(); toast('สั่งรีโหลดแล้ว — กดบันทึกเพื่อส่งคำสั่ง'); }),
+
+  bkToday: () => { state.bkDate = RB.businessDate(new Date(), state.cfg.settings.dayStartHour); render(); },
+  addBooking: () => {
+    const b = { id: uid('bk'), date: state.bkDate, time: '19:00', name: '', room: '', guests: '', note: '', status: 'booked' };
+    change(c => c.bookings.push(b));
+    const input = document.querySelector(`tr[data-bk="${b.id}"] input[data-path$=".name"]`);
+    if (input) input.focus();
+  },
+  delBooking: d => {
+    const b = state.cfg.bookings[d.i];
+    if (confirm(`ลบการจอง ${b.time} ${b.name || ''}?`)) change(c => c.bookings.splice(d.i, 1));
+  },
+  addScreen: () => {
+    const name = prompt('ชื่อจอ (เช่น ทางเข้าร้าน, หน้าบาร์)', 'จอพิเศษ');
+    if (!name) return;
+    change(c => {
+      const sc = RB.defaultScreen();
+      sc.id = 'screen-' + Math.random().toString(36).slice(2, 7);
+      sc.name = name;
+      sc.playlist = c.playlists[0] ? c.playlists[0].id : '';
+      c.screens.push(sc);
+    });
+  },
+  delScreen: d => { if (confirm(`ลบจอ ${state.cfg.screens[d.i].name}?`)) change(c => c.screens.splice(d.i, 1)); },
   reloadAll: () => change(c => { c.reload = Date.now(); toast('สั่งรีโหลดทุกจอ — กดบันทึกเพื่อส่งคำสั่ง'); }),
   bulkPlaylist: () => { const id = $('#bulkPl').value; change(c => c.rooms.forEach(r => { r.mode = 'playlist'; r.playlist = id; })); },
   bulkMode: d => change(c => c.rooms.forEach(r => { r.mode = d.mode; })),
@@ -788,6 +897,7 @@ document.addEventListener('click', e => {
 
 function onBind(e) {
   const el = e.target;
+  if (el.id === 'bkDate') { if (e.type === 'change' && el.value) { state.bkDate = el.value; render(); } return; }
   const path = el.dataset && el.dataset.path;
   if (!path || !state.cfg) return;
   let v = el.type === 'checkbox' ? el.checked : el.value;
