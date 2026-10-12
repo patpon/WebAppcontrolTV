@@ -139,7 +139,7 @@
     var box = $('welcome');
     $('welcomeText').textContent = text;
     clearInterval(welcomeTimer);
-    if (!text || room.mode !== 'playlist') { box.classList.remove('on'); return; }
+    if (!text || !isPlaylistMode()) { box.classList.remove('on'); return; }
     var cycle = function () {
       box.classList.add('on');
       setTimeout(function () { box.classList.remove('on'); }, 15000);
@@ -147,6 +147,9 @@
     cycle();
     welcomeTimer = setInterval(cycle, 60000);
   }
+
+  // 'auto' = playlist while the room is idle; the bridge on the central PC switches to the karaoke app on remote input
+  function isPlaylistMode() { return room.mode === 'playlist' || room.mode === 'auto'; }
 
   function tickClock() {
     var d = new Date();
@@ -175,13 +178,16 @@
 
   function start() {
     document.body.classList.toggle('mode-off', room.mode === 'off');
+    $('singHint').classList.add('hidden');
     clearStage();
     if (room.mode === 'off') return showScreen('', 'off');
     if (room.mode === 'logo') return showScreen(logoScreen());
+    if (room.mode === 'karaoke') return showScreen(logoScreen('โหมดคาราโอเกะ'));
     if (room.mode === 'message') {
       return showScreen('<div class="msg-label">' + esc(room.name) + '</div><div class="msg">' + esc(room.message || '') + '</div>');
     }
     hideScreen();
+    $('singHint').classList.toggle('hidden', room.mode !== 'auto');
     buildQueue();
     if (!queue.length) return showScreen(logoScreen('ยังไม่มีสื่อในเพลย์ลิสต์นี้'));
     idx = -1;

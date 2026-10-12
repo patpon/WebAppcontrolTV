@@ -224,3 +224,12 @@ body.no-ticker .welcome { bottom: 5vmin; }
   font-size: 1.8vmin; padding: .6vmin 1.6vmin; border-radius: 99vmin;
   background: rgba(180, 40, 40, .85);
 }
+
+#singHint {
+  position: fixed; right: 3vw; bottom: 10vmin; z-index: 12;
+  padding: 1.2vmin 2.8vmin; border-radius: 99vmin; font-size: 2.4vmin; font-weight: 500;
+  background: rgba(10, 18, 15, .78); border: 1px solid var(--primary); color: var(--ink);
+  animation: pulse 3s ease-in-out infinite;
+}
+body.no-ticker #singHint { bottom: 4vmin; }
+@keyframes pulse { 0%,100% { opacity: .75; } 50% { opacity: 1; } }

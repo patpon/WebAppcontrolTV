@@ -17,6 +17,8 @@ const state = {
 };
 
 const MODES = [
+  { id: 'karaoke', label: 'คาราโอเกะ' },
+  { id: 'auto', label: 'อัตโนมัติ' },
   { id: 'playlist', label: 'เล่นสื่อ' },
   { id: 'message', label: 'ข้อความ' },
   { id: 'logo', label: 'โลโก้' },
@@ -168,6 +170,8 @@ function viewRooms() {
     <div class="card bulk">ทุกห้อง:
       <select id="bulkPl">${plOptions(c.playlists[0] && c.playlists[0].id)}</select>
       <button class="btn small" data-act="bulkPlaylist">ใช้เพลย์ลิสต์นี้</button>
+      <button class="btn small" data-act="bulkMode" data-mode="karaoke">คาราโอเกะ</button>
+      <button class="btn small" data-act="bulkMode" data-mode="auto">อัตโนมัติ</button>
       <button class="btn small" data-act="bulkMode" data-mode="logo">โลโก้</button>
       <button class="btn small" data-act="bulkMode" data-mode="off">ปิดจอ</button>
     </div>
@@ -178,8 +182,10 @@ function viewRooms() {
 function roomCard(r, i) {
   const p = `rooms.${i}`;
   let body = '';
-  if (r.mode === 'playlist') {
-    body = `
+  if (r.mode === 'playlist' || r.mode === 'auto') {
+    body = (r.mode === 'auto'
+      ? `<p class="muted small-text" style="margin:0">ไม่มีคนกดรีโมต ${esc(state.cfg.settings.idleMinutes)} นาที → แสดงโปรโมท · กดรีโมตปุ่มไหนก็ได้ → กลับแอปคาราโอเกะ</p>`
+      : '') + `
       <label class="f">เพลย์ลิสต์<select data-path="${p}.playlist">${plOptions(r.playlist)}</select></label>
       <label class="f">ข้อความต้อนรับ (เด้งขึ้นทุก 1 นาที)
         <input data-path="${p}.welcome" value="${esc(r.welcome)}" placeholder="เช่น สุขสันต์วันเกิดคุณเอ"></label>`;
@@ -187,6 +193,8 @@ function roomCard(r, i) {
     body = `
       <label class="f">ข้อความเต็มจอ<textarea rows="3" data-path="${p}.message" placeholder="พิมพ์ข้อความ">${esc(r.message)}</textarea></label>
       <div class="chips">${MSG_TEMPLATES.map((t, k) => `<button class="chip" data-act="msgTpl" data-i="${i}" data-k="${k}">${esc(t.replace('\n', ' '))}</button>`).join('')}</div>`;
+  } else if (r.mode === 'karaoke') {
+    body = `<p class="muted small-text">เปิดแอปคาราโอเกะบนกล่อง (ลูกค้ากำลังใช้ห้อง)</p>`;
   } else if (r.mode === 'logo') {
     body = `<p class="muted small-text">แสดงโลโก้ร้านเต็มจอ (เหมาะตอนห้องว่าง)</p>`;
   } else {
@@ -433,6 +441,17 @@ function viewSettings() {
         <button class="btn small" data-act="reloadAll">${icon('refresh')} สั่งรีโหลดทุกจอ</button>
       </div>
       <label class="f">จอเช็คข้อมูลใหม่ทุก (วินาที)<input type="number" min="10" data-type="num" data-path="settings.pollSeconds" value="${esc(c.settings.pollSeconds)}"></label>
+    </section>
+
+    <section class="card">
+      <h2>กล่อง Android: สลับแอปคาราโอเกะ ↔ โปรโมท</h2>
+      <p class="small-text muted" style="margin:0">ใช้ได้เมื่อเปิดโปรแกรม <b>bridge</b> บนคอมกลาง (ดู <code>bridge/README.md</code>) — ใช้กับโหมด “คาราโอเกะ” และ “อัตโนมัติ”</p>
+      <div class="grid2">
+        <label class="f">แอปคาราโอเกะ (package)<input data-path="settings.karaokeApp" value="${esc(c.settings.karaokeApp)}" placeholder="ดูจาก bridge -Status"></label>
+        <label class="f">แอปแสดงโปรโมท (package)<input data-path="settings.promoApp" value="${esc(c.settings.promoApp)}"></label>
+      </div>
+      <label class="f">อัตโนมัติ: ไม่มีคนกดรีโมตกี่นาทีจึงเปลี่ยนเป็นโปรโมท<input type="number" min="1" data-type="num" data-path="settings.idleMinutes" value="${esc(c.settings.idleMinutes)}"></label>
+      <label class="check"><input type="checkbox" data-path="settings.idleIgnoreAudio" ${c.settings.idleIgnoreAudio ? 'checked' : ''}> ไม่ต้องรอให้เสียงเงียบ (ใช้เมื่อแอปคาราโอเกะเปิดเพลงพื้นหลังตลอด)</label>
     </section>
 
     <section class="card">

@@ -115,10 +115,12 @@ textarea { resize: vertical; }
 .room.mode-message { border-top-color: var(--lotus); }
 .room.mode-logo { border-top-color: var(--gold); }
 .room.mode-off { border-top-color: #888; opacity: .85; }
+.room.mode-karaoke { border-top-color: #5b4bb7; }
+.room.mode-auto { border-top-color: #2f8f5b; }
 .room-top { display: flex; gap: 8px; align-items: center; }
 .room-name { font-weight: 600; font-size: 16px; background: transparent; border-color: transparent; padding: 4px 6px; }
 .room-name:hover { border-color: var(--line); }
-.seg { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 3px; }
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 3px; }
 .seg button { border: 0; background: none; font: inherit; font-size: 12.5px; padding: 6px 2px; border-radius: 7px; cursor: pointer; color: var(--muted); }
 .seg button.on { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
