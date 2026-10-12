@@ -173,6 +173,7 @@
   var boardPage = 0, boardTimer = null, boardHtml = '';
   function renderBoard() {
     var on = room.mode === 'lobby' || room.mode === 'bookings';
+    if (!$('board')) return; // stale cached tv.html from before the board existed
     document.body.classList.toggle('layout-lobby', room.mode === 'lobby');
     document.body.classList.toggle('layout-bookings', room.mode === 'bookings');
     $('board').classList.toggle('hidden', !on);
