@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ระเบียงบัว — ระบบจอ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="assets/img/lotus.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/admin.css">
+  <style>
+    .hero { max-width: 880px; margin: 0 auto; padding: 48px 24px 24px; text-align: center; }
+    .hero img { width: 84px; height: 84px; }
+    .hero h1 { font-size: 34px; margin-top: 10px; }
+    .hero p { color: var(--muted); margin: 8px 0 22px; }
+    .tvs { max-width: 880px; margin: 0 auto; padding: 0 24px 48px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+    .tvs a { padding: 16px; text-decoration: none; color: var(--ink); display: flex; gap: 10px; align-items: center; }
+    .tvs a:hover { border-color: var(--gold); }
+  </style>
+</head>
+<body>
+  <section class="hero">
+    <img src="assets/img/lotus.svg" alt="">
+    <h1 id="shop">ระเบียงบัว</h1>
+    <p>ระบบควบคุมจอโปรโมทในห้องคาราโอเกะ</p>
+    <a class="btn primary" href="admin.html">เข้าแผงควบคุม</a>
+  </section>
+  <h3 style="max-width:880px;margin:0 auto 12px;padding:0 24px">เปิดจอของแต่ละห้อง</h3>
+  <section class="tvs" id="tvs"></section>
+  <script src="assets/js/common.js"></script>
+  <script>
+    fetch(RB.CONFIG_PATH + '?t=' + Date.now(), { cache: 'no-store' })
+      .then(r => r.json()).catch(() => null)
+      .then(raw => {
+        const cfg = RB.normalize(raw);
+        document.getElementById('shop').textContent = cfg.shop.name;
+        document.getElementById('tvs').innerHTML = cfg.rooms.map(r =>
+          `<a class="card" href="tv.html?room=${encodeURIComponent(r.id)}"><svg viewBox="0 0 24 24"><path d="M3 5h18v12H3z M8 21h8 M12 17v4"/></svg>${RB.esc(r.name)}</a>`
+        ).join('');
+      });
+  </script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0e1f1a">
+  <title>ระเบียงบัว TV</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="assets/img/lotus.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/tv.css">
+</head>
+<body>
+  <main id="stage" aria-live="polite"></main>
+
+  <div id="screen" class="screen hidden"></div>
+
+  <header id="hud">
+    <div class="hud-brand"><img id="hudLogo" alt=""><span id="hudShop"></span></div>
+    <div class="hud-right"><span id="hudRoom"></span><span id="hudClock"></span></div>
+  </header>
+
+  <section id="welcome" class="welcome">
+    <span class="welcome-label">ยินดีต้อนรับ</span>
+    <span id="welcomeText" class="welcome-text"></span>
+  </section>
+
+  <footer id="ticker"><div class="ticker-label">ประกาศ</div><div class="ticker-window"><span id="tickerText"></span></div></footer>
+
+  <div id="tapHint">แตะหน้าจอ / กด OK ที่รีโมต เพื่อเต็มจอ</div>
+  <div id="netStatus" class="hidden">ออฟไลน์ — แสดงข้อมูลล่าสุด</div>
+
+  <script src="assets/js/common.js"></script>
+  <script src="assets/js/tv.js"></script>
+</body>
+</html>

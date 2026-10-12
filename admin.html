@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>แผงควบคุมจอ — ระเบียงบัว</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="assets/img/lotus.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/admin.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./"><img src="assets/img/lotus.svg" alt=""><span><b id="brandName">ระเบียงบัว</b><small>ระบบควบคุมจอ</small></span></a>
+    <div class="conn" id="conn"><span class="dot"></span><span id="connText">กำลังโหลด…</span></div>
+    <button class="btn primary save" id="saveBtn" data-act="save" disabled>
+      <svg viewBox="0 0 24 24"><path d="M5 3h11l3 3v15H5z M8 3v6h8V3 M8 21v-7h8v7"/></svg>
+      <span id="saveText">บันทึก &amp; ส่งขึ้นจอ</span>
+    </button>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button data-tab="rooms" class="on">ห้อง / จอ</button>
+    <button data-tab="playlists">เพลย์ลิสต์</button>
+    <button data-tab="menu">เมนูอาหาร</button>
+    <button data-tab="media">คลังสื่อ</button>
+    <button data-tab="settings">ตั้งค่า</button>
+  </nav>
+
+  <main id="view" class="view"></main>
+
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true"><div class="modal-box" id="modalBox"></div></div>
+  <div id="progress" class="progress hidden"><div class="spinner"></div><div id="progressText"></div></div>
+  <div id="toast" class="toast"></div>
+  <input type="file" id="fileInput" accept="image/*,video/mp4,video/webm" multiple hidden>
+
+  <script src="assets/js/common.js"></script>
+  <script src="assets/js/github.js"></script>
+  <script src="assets/js/admin.js"></script>
+</body>
+</html>
