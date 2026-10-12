@@ -12,6 +12,11 @@
   var CACHE_KEY = 'rb_tv_cfg';
   var BOOT = Date.now();
 
+  // Remember which room this box belongs to, so index.html can reopen it next time.
+  if (!DRAFT && !FORCE_PL && qs.get('room')) {
+    try { localStorage.setItem('rb_room', ROOM); } catch (e) {}
+  }
+
   var cfg = null, room = null;
   var queue = [], idx = -1, timer = null, sig = '', reloadSig = null;
   var pollTimer = null, welcomeTimer = null;
