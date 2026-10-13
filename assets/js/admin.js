@@ -34,6 +34,12 @@ const SCREEN_MODES = [
   { id: 'logo', label: 'โลโก้' },
   { id: 'off', label: 'ปิดจอ' }
 ];
+// Special screens only: turn the whole TV page for a portrait-mounted TV (see tv.js "screen rotation")
+const ROTATIONS = [
+  { id: '0', label: 'ตามเครื่อง (แนวนอน)' },
+  { id: '90', label: 'แนวตั้ง — หมุนภาพ 90° ตามเข็มนาฬิกา' },
+  { id: '270', label: 'แนวตั้ง — หมุนภาพ 90° ทวนเข็มนาฬิกา' }
+];
 const BK_STATUS = [
   { id: 'booked', label: 'จองแล้ว' },
   { id: 'arrived', label: 'มาแล้ว' },
@@ -241,7 +247,7 @@ function roomCard(r, i, coll) {
   if (r.mode === 'playlist' || r.mode === 'auto' || r.mode === 'lobby') {
     body = (r.mode === 'auto'
       ? `<p class="muted small-text" style="margin:0">ไม่มีคนกดรีโมต ${esc(state.cfg.settings.idleMinutes)} นาที → แสดงโปรโมท · กดรีโมตปุ่มไหนก็ได้ → กลับแอปคาราโอเกะ</p>`
-      : r.mode === 'lobby' ? `<p class="muted small-text" style="margin:0">ซ้าย: รายการจองวันนี้ · ขวา: สไลด์จากเพลย์ลิสต์</p>` : '') + `
+      : r.mode === 'lobby' ? `<p class="muted small-text" style="margin:0">${Number(r.rotate) ? 'บน: รายการจองวันนี้ · ล่าง: สไลด์จากเพลย์ลิสต์' : 'ซ้าย: รายการจองวันนี้ · ขวา: สไลด์จากเพลย์ลิสต์'}</p>` : '') + `
       <label class="f">เพลย์ลิสต์<select data-path="${p}.playlist">${plOptions(r.playlist)}</select></label>
       <label class="f">ข้อความต้อนรับ (เด้งขึ้นทุก 1 นาที)
         <input data-path="${p}.welcome" value="${esc(r.welcome)}" placeholder="เช่น สุขสันต์วันเกิดคุณเอ"></label>`;
@@ -257,6 +263,13 @@ function roomCard(r, i, coll) {
     body = `<p class="muted small-text">แสดงโลโก้ร้านเต็มจอ (เหมาะตอนห้องว่าง)</p>`;
   } else {
     body = `<p class="muted small-text">จอดำ</p>`;
+  }
+  if (coll === 'screens') {
+    const rot = String(r.rotate || 0);
+    body += `
+      <label class="f">การวางจอ<select data-path="${p}.rotate" data-type="num" data-rerender>${ROTATIONS.map(o =>
+        `<option value="${o.id}" ${rot === o.id ? 'selected' : ''}>${o.label}</option>`).join('')}</select></label>
+      <p class="muted small-text" style="margin:0">ทีวีตั้งแนวตั้ง แต่ภาพยังออกแนวนอน → เลือกแนวตั้ง · ภาพกลับหัวให้เลือกอีกทิศ · เครื่องที่หมุนจอเองได้ (เช่น Windows) เลือก “ตามเครื่อง”</p>`;
   }
   const bks = coll === 'rooms' ? todayBookings(r.id) : [];
   const bkLine = bks.length

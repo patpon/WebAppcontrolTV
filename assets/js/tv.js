@@ -17,7 +17,7 @@
     try { localStorage.setItem('rb_room', ROOM); } catch (e) {}
   }
 
-  var cfg = null, room = null;
+  var cfg = null, room = null, rotation = null;
   var queue = [], idx = -1, timer = null, sig = '', reloadSig = null;
   var pollTimer = null, welcomeTimer = null;
   var unlocked = false;
@@ -56,6 +56,39 @@
     });
   }
 
+  /* ---------- screen rotation ----------
+     For a TV mounted portrait while the device still outputs landscape (most smart TVs / boxes):
+     the whole page is turned 90° in CSS (html.rot-90 / html.rot-270), and html.portrait switches
+     the entrance layout to "board on top, slides below". */
+  function rotationOf(r) {
+    var d = Number(r && r.rotate) || 0;
+    return d === 90 || d === 270 ? d : 0;
+  }
+  function isRotated() {
+    var c = document.documentElement.classList;
+    return c.contains('rot-90') || c.contains('rot-270');
+  }
+  function viewWidth() { return isRotated() ? window.innerHeight : window.innerWidth; }
+  function updatePortrait() {
+    var w = viewWidth(), h = isRotated() ? window.innerWidth : window.innerHeight;
+    document.documentElement.classList.toggle('portrait', h >= w);
+  }
+  function applyRotation(deg) {
+    var c = document.documentElement.classList;
+    c.toggle('rot-90', deg === 90);
+    c.toggle('rot-270', deg === 270);
+    updatePortrait();
+  }
+  window.addEventListener('resize', updatePortrait);
+  // Turn the page before the first paint using the last config this screen saw.
+  (function () {
+    var saved = null;
+    try { saved = localStorage.getItem(CACHE_KEY); } catch (e) {}
+    var r = null;
+    try { r = saved ? RB.findRoom(RB.normalize(JSON.parse(saved)), ROOM) : null; } catch (e) {}
+    applyRotation(rotationOf(r));
+  })();
+
   function setOnline(ok) { $('netStatus').classList.toggle('hidden', ok); }
 
   function apply(raw) {
@@ -71,6 +104,11 @@
     var rs = String(cfg.reload) + '|' + String(room.reload);
     if (reloadSig === null) reloadSig = rs;
     else if (rs !== reloadSig) { location.reload(); return; }
+
+    // Rotation changes the whole layout, so a change after boot just reloads the page.
+    var rot = rotationOf(room);
+    if (rotation === null) { rotation = rot; applyRotation(rot); }
+    else if (rot !== rotation) { location.reload(); return; }
 
     applyTheme();
     applyHud();
@@ -134,7 +172,7 @@
     // measure after layout, then run at a constant px/sec speed
     setTimeout(function () {
       var win = el.parentNode.offsetWidth, w = el.offsetWidth;
-      var pxPerSec = Math.max(20, Number(cfg.ticker.speed) || 60) * (window.innerWidth / 1280);
+      var pxPerSec = Math.max(20, Number(cfg.ticker.speed) || 60) * (viewWidth() / 1280);
       el.style.setProperty('--from', win + 'px');
       el.style.animation = 'tick ' + ((w + win) / pxPerSec).toFixed(1) + 's linear infinite';
     }, 50);

@@ -5,7 +5,17 @@
   --ink: #fbf6ea;
   --muted: rgba(251, 246, 234, .68);
   --fade: .9s;
+  --vw: 1vw;  /* viewport units that follow the rotated page (see html.rot-*) */
+  --vh: 1vh;
 }
+
+/* ---------- rotation: TV mounted portrait, device outputs landscape ---------- */
+html.rot-90, html.rot-270 { --vw: 1vh; --vh: 1vw; }
+html.rot-90 body, html.rot-270 body {
+  position: fixed; top: 0; left: 0; width: 100vh; height: 100vw; transform-origin: 0 0;
+}
+html.rot-90 body { transform: translateX(100vw) rotate(90deg); }
+html.rot-270 body { transform: translateY(100vh) rotate(-90deg); }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -162,7 +172,7 @@ html, body {
 .screen img.logo { width: 26vmin; height: 26vmin; object-fit: contain; animation: breathe 6s ease-in-out infinite; }
 .screen h1 { font-size: 9vmin; font-weight: 600; margin-top: 3vmin; }
 .screen p { font-size: 3.4vmin; color: var(--muted); margin-top: 1.5vmin; }
-.screen .msg { font-size: 8vmin; font-weight: 600; line-height: 1.25; max-width: 85vw; white-space: pre-line; }
+.screen .msg { font-size: 8vmin; font-weight: 600; line-height: 1.25; max-width: 85vw; max-width: calc(85 * var(--vw)); white-space: pre-line; }
 .screen .msg-label { color: var(--primary); letter-spacing: .3em; font-size: 2.6vmin; margin-bottom: 3vmin; }
 @keyframes breathe { 0%,100% { transform: scale(1); opacity: .9; } 50% { transform: scale(1.05); opacity: 1; } }
 
@@ -170,7 +180,7 @@ html, body {
 #hud {
   position: fixed; top: 0; left: 0; right: 0; z-index: 10;
   display: flex; justify-content: space-between; align-items: center;
-  padding: 2.6vmin 3.5vw;
+  padding: 2.6vmin 3.5vw; padding: 2.6vmin calc(3.5 * var(--vw));
   background: linear-gradient(180deg, rgba(0,0,0,.55), transparent);
   pointer-events: none; font-size: 2.6vmin;
 }
@@ -207,7 +217,7 @@ body.no-clock #hudClock { display: none; }
   border: 1px solid var(--primary);
   border: 1px solid color-mix(in srgb, var(--primary) 55%, transparent);
   box-shadow: 0 2vmin 6vmin rgba(0,0,0,.45);
-  max-width: 88vw; text-align: center;
+  max-width: 88vw; max-width: calc(88 * var(--vw)); text-align: center;
 }
 .welcome.on { opacity: 1; transform: translate(-50%, 0); }
 .welcome-label { font-size: 2.2vmin; letter-spacing: .35em; color: var(--primary); }
@@ -242,7 +252,7 @@ body.show-ui #homeBtn { opacity: 1; pointer-events: auto; cursor: pointer; }
 }
 
 #singHint {
-  position: fixed; right: 3vw; bottom: 10vmin; z-index: 12;
+  position: fixed; right: 3vw; right: calc(3 * var(--vw)); bottom: 10vmin; z-index: 12;
   padding: 1.2vmin 2.8vmin; border-radius: 99vmin; font-size: 2.4vmin; font-weight: 500;
   background: rgba(10, 18, 15, .78); border: 1px solid var(--primary); color: var(--ink);
   animation: pulse 3s ease-in-out infinite;
@@ -256,9 +266,9 @@ body.no-ticker #singHint { bottom: 4vmin; }
   padding: 3vmin 3vmin 2vmin; border-radius: 2.4vmin;
   background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.09);
 }
-body.layout-lobby .board { top: 11vmin; bottom: 10vmin; left: 3vw; width: 40vw; }
-body.layout-bookings .board { top: 11vmin; bottom: 10vmin; left: 6vw; right: 6vw; }
-body.layout-lobby #stage { top: 11vmin; bottom: 10vmin; left: 45vw; right: 3vw; border-radius: 2.4vmin; overflow: hidden; }
+body.layout-lobby .board { top: 11vmin; bottom: 10vmin; left: 3vw; width: 40vw; left: calc(3 * var(--vw)); width: calc(40 * var(--vw)); }
+body.layout-bookings .board { top: 11vmin; bottom: 10vmin; left: 6vw; right: 6vw; left: calc(6 * var(--vw)); right: calc(6 * var(--vw)); }
+body.layout-lobby #stage { top: 11vmin; bottom: 10vmin; left: 45vw; right: 3vw; left: calc(45 * var(--vw)); right: calc(3 * var(--vw)); border-radius: 2.4vmin; overflow: hidden; }
 body.no-ticker.layout-lobby .board, body.no-ticker.layout-lobby #stage, body.no-ticker.layout-bookings .board { bottom: 3vmin; }
 
 .board-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 1vmin 2vmin; }
@@ -292,8 +302,6 @@ body.layout-bookings .board-head h2 { font-size: 6vmin; }
 .s-logo h1 { font-size: 8cqmin; font-weight: 600; margin-top: 2cqmin; }
 .s-logo p { font-size: 3cqmin; color: var(--muted); }
 
-/* portrait / narrow screens: stack the board above the slides */
-@media (max-aspect-ratio: 1/1) {
-  body.layout-lobby .board { left: 3vw; right: 3vw; width: auto; bottom: auto; height: 42vh; }
-  body.layout-lobby #stage { left: 3vw; right: 3vw; top: calc(11vmin + 42vh + 2vmin); }
-}
+/* portrait / narrow screens (html.portrait is set by tv.js, also when rotated): board above the slides */
+html.portrait body.layout-lobby .board { left: calc(3 * var(--vw)); right: calc(3 * var(--vw)); width: auto; bottom: auto; height: calc(42 * var(--vh)); }
+html.portrait body.layout-lobby #stage { left: calc(3 * var(--vw)); right: calc(3 * var(--vw)); top: calc(11vmin + 42 * var(--vh) + 2vmin); }
