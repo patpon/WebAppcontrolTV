@@ -310,7 +310,9 @@ function viewBookings() {
     <div class="row"><input type="date" id="bkDate" value="${esc(date)}" style="width:auto"><button class="btn small" data-act="bkToday">วันนี้</button>
       ${lobby ? `<a class="btn small" href="${esc(tvUrl(lobby.id, '&draft=1'))}" target="_blank" rel="noopener">${icon('eye')} ดูจอหน้าร้าน</a>` : ''}</div>
   </div>
-  <div class="banner small-text">ข้อมูลบน GitHub เป็นสาธารณะ — ใส่แค่ <b>ชื่อที่จะโชว์บนจอ</b> (เช่น คุณเอ) <b>ห้ามใส่เบอร์โทร</b> · การจองที่เก่ากว่าเมื่อวานจะถูกลบอัตโนมัติตอนบันทึก</div>
+  <div class="banner small-text">${state.mode === 'server'
+    ? 'รายการจองเปิดดูได้จากหน้าเว็บ (จอหน้าร้านดึงข้อมูลชุดนี้)'
+    : 'ข้อมูลบน GitHub เป็นสาธารณะ'} — ใส่แค่ <b>ชื่อที่จะโชว์บนจอ</b> (เช่น คุณเอ) <b>ห้ามใส่เบอร์โทร</b> · การจองที่เก่ากว่าเมื่อวานจะถูกลบอัตโนมัติตอนบันทึก</div>
   <section class="card cat">
     <div class="cat-head"><h2 style="flex:1;font-size:17px">${perSes} · รวม ${guests} ท่าน</h2>
       <button class="btn primary small" data-act="addBooking">${icon('plus')} เพิ่มการจอง</button></div>
