@@ -196,7 +196,7 @@
         '<span class="g">' + (b.guests ? esc(b.guests) + ' ท่าน' : '') + '</span></div>';
     }).join('');
 
-    var dateText = new Date(date + 'T12:00:00').toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long' });
+    var dateText = new Date(date + 'T12:00:00').toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     // while the day session runs, tease how many rooms are already booked for the next session
     var ss = RB.sessions(cfg), later = '';
     var nextSes = ss[ss.indexOf(ses) + 1];
