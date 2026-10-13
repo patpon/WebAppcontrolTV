@@ -8,6 +8,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="assets/img/lotus.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#0e1f1a">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="assets/img/icons/apple-touch-icon.png">
   <link rel="stylesheet" href="assets/css/admin.css">
   <style>
     .hero { max-width: 960px; margin: 0 auto; padding: 40px 24px 20px; text-align: center; }
@@ -41,6 +44,11 @@
   <section class="tvs" id="tvs"></section>
   <script src="assets/js/common.js"></script>
   <script>
+    // Register the service worker here too, so the start page is installable as an app
+    if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+
     const ROOM_KEY = 'rb_room';
     let saved = null;
     try { saved = localStorage.getItem(ROOM_KEY); } catch (_) {}
