@@ -214,6 +214,20 @@ body.no-clock #hudClock { display: none; }
 .welcome-text { font-size: 5vmin; font-weight: 600; line-height: 1.25; }
 body.no-ticker .welcome { bottom: 5vmin; }
 
+/* Back-to-start button: hidden until the mouse moves, the screen is touched or ↑ is pressed */
+#homeBtn {
+  position: fixed; top: 2.6vmin; left: 50%; transform: translateX(-50%); z-index: 30;
+  display: flex; align-items: center; gap: 1vmin;
+  padding: .7vmin 2.2vmin; border-radius: 99vmin; font-size: 2.4vmin; font-weight: 500;
+  background: rgba(10, 18, 15, .85); border: 1px solid var(--primary); color: var(--ink);
+  text-decoration: none; outline: none;
+  opacity: 0; pointer-events: none; transition: opacity .3s;
+}
+#homeBtn svg { width: 2.8vmin; height: 2.8vmin; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+#homeBtn:focus, #homeBtn:hover { background: var(--primary); color: var(--bg); }
+body.show-ui { cursor: auto; }
+body.show-ui #homeBtn { opacity: 1; pointer-events: auto; cursor: pointer; }
+
 #tapHint {
   position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 20;
   padding: 2vmin 4vmin; border-radius: 99vmin; font-size: 2.6vmin;

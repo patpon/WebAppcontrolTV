@@ -429,9 +429,24 @@
     }).catch(function () {});
   }
 
+  // Home button stays hidden on the TV; mouse/touch or ↑ on the remote reveals it for a few seconds.
+  var uiTimer = null;
+  function showUi() {
+    document.body.classList.add('show-ui');
+    clearTimeout(uiTimer);
+    uiTimer = setTimeout(function () {
+      document.body.classList.remove('show-ui');
+      $('homeBtn').blur();
+    }, 4000);
+  }
+  document.addEventListener('mousemove', showUi);
+  document.addEventListener('touchstart', showUi, { passive: true });
+
   document.addEventListener('click', unlock);
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'ArrowRight') next();
+    if (e.key === 'ArrowUp') { e.preventDefault(); showUi(); $('homeBtn').focus(); }
+    else if (e.key === 'ArrowDown') { document.body.classList.remove('show-ui'); $('homeBtn').blur(); }
+    else if (e.key === 'ArrowRight') next();
     else if (e.key === 'ArrowLeft') step(-1);
     else if (e.key === 'Enter' || e.key === ' ') unlock();
     else if (e.key === 'r' || e.key === 'R') location.reload();
