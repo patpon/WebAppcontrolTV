@@ -39,7 +39,7 @@
     <p>เลือกห้อง ด้วยปุ่มลูกศรบนรีโมต แล้วกด OK</p>
     <a class="btn" href="admin.html">แผงควบคุม (สำหรับผู้ดูแล)</a>
   </section>
-  <div class="resume hidden" id="resume"><div class="banner">กำลังเปิดจอห้อง <b id="resumeRoom"></b> ใน <b id="resumeSec">3</b> วินาที — กดปุ่มใดก็ได้เพื่อเลือกห้องอื่น</div></div>
+  <div class="resume hidden" id="resume"><div class="banner">กำลังเปิดจอห้อง <b id="resumeRoom"></b> ใน <b id="resumeSec">10</b> วินาที — กดปุ่มใดก็ได้เพื่อเลือกห้องอื่น</div></div>
   <h3 class="sub">เปิดจอของแต่ละห้อง</h3>
   <section class="tvs" id="tvs"></section>
   <script src="assets/js/common.js"></script>
@@ -83,7 +83,7 @@
         if (!room || cameBack || location.search.includes('pick')) return;
         document.getElementById('resume').classList.remove('hidden');
         document.getElementById('resumeRoom').textContent = room.name;
-        let sec = 3;
+        let sec = 10;
         const t = setInterval(() => {
           sec--;
           document.getElementById('resumeSec').textContent = sec;
