@@ -51,6 +51,7 @@ const TAGS = ['แนะนำ', 'ขายดี', 'ใหม่', 'เผ็�
 const TYPE_LABEL = { image: 'รูปภาพ', video: 'วิดีโอ', menu: 'เมนูอาหาร', promo: 'โปรโมชั่น' };
 
 const ICONS = {
+  alert: 'M12 3l10 18H2z M12 10v5 M12 18v.5',
   up: 'M6 15l6-6 6 6', down: 'M6 9l6 6 6-6', trash: 'M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13',
   copy: 'M8 8h12v12H8z M4 16V4h12', eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6',
   tv: 'M3 5h18v12H3z M8 21h8 M12 17v4', refresh: 'M20 11a8 8 0 1 0-2.3 5.7 M20 4v7h-7',
@@ -289,6 +290,28 @@ function roomCard(r, i, coll) {
   </article>`;
 }
 
+/* Double bookings: one room can only be booked once per session per day.
+   Cancelled bookings and bookings without a room don't count.
+   Returns [{ date, session, room, idx: [booking indexes] }] for every clash. */
+function bookingClashes(c, onDate) {
+  const groups = new Map();
+  c.bookings.forEach((b, i) => {
+    if (!b.room || b.status === 'cancelled' || (onDate && b.date !== onDate)) return;
+    const key = `${b.date}|${RB.bookingSession(c, b)}|${b.room}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(i);
+  });
+  return [...groups].filter(([, idx]) => idx.length > 1).map(([key, idx]) => {
+    const [date, session, room] = key.split('|');
+    return { date, session, room, idx };
+  });
+}
+function clashText(c, x) {
+  const ses = RB.byId(RB.sessions(c), x.session);
+  const room = RB.findRoom(c, x.room);
+  return `ห้อง ${room ? room.name : x.room} ${ses ? ses.name : ''} จองซ้ำ ${x.idx.length} รายการ`;
+}
+
 /* Bookings + special screens */
 function viewBookings() {
   const c = state.cfg, h = c.settings.dayStartHour;
@@ -304,6 +327,8 @@ function viewBookings() {
   const roomOpts = sel => '<option value="">— ไม่ระบุห้อง —</option>' +
     c.rooms.map(r => `<option value="${esc(r.id)}" ${String(r.id) === String(sel) ? 'selected' : ''}>${esc(r.name)}</option>`).join('');
   const lobby = c.screens[0];
+  const clashes = bookingClashes(c, date);
+  const dup = new Set(clashes.flatMap(x => x.idx));
   return `
   <div class="page-head">
     <div><h1>การจอง &amp; จอหน้าร้าน</h1><p>รายชื่อจองขึ้นบนจอหน้าร้าน และจอห้องที่ถูกจองจะขึ้น “ยินดีต้อนรับ + ชื่อ” ให้อัตโนมัติ</p></div>
@@ -313,13 +338,14 @@ function viewBookings() {
   <div class="banner small-text">${state.mode === 'server'
     ? 'รายการจองเปิดดูได้จากหน้าเว็บ (จอหน้าร้านดึงข้อมูลชุดนี้)'
     : 'ข้อมูลบน GitHub เป็นสาธารณะ'} — ใส่แค่ <b>ชื่อที่จะโชว์บนจอ</b> (เช่น คุณเอ) <b>ห้ามใส่เบอร์โทร</b> · การจองที่เก่ากว่าเมื่อวานจะถูกลบอัตโนมัติตอนบันทึก</div>
+  ${clashes.length ? `<div class="banner warn">${icon('alert')} ${clashes.map(x => esc(clashText(c, x))).join(' · ')} — เปลี่ยนห้อง/รอบ หรือตั้งสถานะเป็น “ยกเลิก” ก่อนบันทึก</div>` : ''}
   <section class="card cat">
     <div class="cat-head"><h2 style="flex:1;font-size:17px">${perSes} · รวม ${guests} ท่าน</h2>
       <button class="btn primary small" data-act="addBooking">${icon('plus')} เพิ่มการจอง</button></div>
     <table class="menu-table bk-table">
       <thead><tr><th>รอบ</th><th>ห้อง</th><th>ชื่อ (โชว์บนจอ)</th><th>คน</th><th>โอกาส / หมายเหตุ</th><th>สถานะ</th><th></th></tr></thead>
       <tbody>${list.map(({ b, i, s }) => `
-        <tr class="${b.status === 'cancelled' ? 'na' : ''}" data-bk="${esc(b.id)}">
+        <tr class="${b.status === 'cancelled' ? 'na' : ''}${dup.has(i) ? ' dup' : ''}" data-bk="${esc(b.id)}">
           <td style="width:120px"><select data-path="bookings.${i}.session" data-rerender>${ss.map(x => `<option value="${esc(x.id)}" ${x.id === s ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></td>
           <td style="width:140px"><select data-path="bookings.${i}.room" data-rerender>${roomOpts(b.room)}</select></td>
           <td><input data-path="bookings.${i}.name" value="${esc(b.name)}" placeholder="เช่น คุณเอ"></td>
@@ -720,6 +746,21 @@ async function save() {
       alert('ยังไม่ได้เชื่อม GitHub Token ที่มีสิทธิ์เขียน\nไปที่แท็บ “ตั้งค่า” → เชื่อมต่อ GitHub');
       state.tab = 'settings';
     }
+    render();
+    return;
+  }
+  // block double bookings (same room, same session, same day) — usually a typo
+  const yd = new Date();
+  yd.setDate(yd.getDate() - 1);
+  const keepFrom0 = RB.businessDate(yd, state.cfg.settings.dayStartHour);   // older bookings are dropped on save anyway
+  const clashes = bookingClashes(state.cfg).filter(x => x.date >= keepFrom0);
+  if (clashes.length) {
+    const fmtDate = d => new Date(d + 'T12:00:00').toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+    alert('บันทึกไม่ได้ — มีการจองห้องซ้ำ\n\n' +
+      clashes.map(x => `• ${fmtDate(x.date)}: ${clashText(state.cfg, x)}`).join('\n') +
+      '\n\nเปลี่ยนห้อง/รอบ หรือตั้งสถานะเป็น “ยกเลิก” แล้วกดบันทึกอีกครั้ง');
+    state.tab = 'bookings';
+    state.bkDate = clashes[0].date;
     render();
     return;
   }

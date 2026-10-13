@@ -106,6 +106,13 @@ textarea { resize: vertical; }
   padding: 12px 16px; margin-bottom: 18px; border-radius: 12px;
   background: color-mix(in srgb, var(--gold) 14%, var(--surface)); border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
 }
+.banner.warn {
+  color: var(--danger); font-weight: 600;
+  background: color-mix(in srgb, var(--danger) 9%, var(--surface)); border-color: color-mix(in srgb, var(--danger) 55%, transparent);
+}
+/* the same room booked twice in one session */
+.bk-table tr.dup td { background: color-mix(in srgb, var(--danger) 8%, transparent); }
+.bk-table tr.dup select[data-path$=".room"], .bk-table tr.dup select[data-path$=".session"] { border-color: var(--danger); box-shadow: 0 0 0 2px color-mix(in srgb, var(--danger) 25%, transparent); }
 
 /* ---------- rooms ---------- */
 .bulk { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 12px; font-size: 14px; }
