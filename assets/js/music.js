@@ -58,7 +58,8 @@
     e.preventDefault();
     JB.login($('pw').value).then(function () {
       $('pw').value = '';
-      gate('start', 'กดปุ่มเพื่อเริ่ม — เบราว์เซอร์ต้องให้กดหนึ่งครั้งก่อนจึงจะเปิดเสียงได้');
+      if (unlocked) { gate(null); askDir(); resume(); }
+      else gate('start', 'กดปุ่มเพื่อเริ่ม — เบราว์เซอร์ต้องให้กดหนึ่งครั้งก่อนจึงจะเปิดเสียงได้');
       tick();
     }).catch(function (err) { $('gateErr').textContent = err.message; });
   });
@@ -66,13 +67,29 @@
   $('startBtn').addEventListener('click', function () {
     unlocked = true;
     gate(null);
-    // asking again is instant when Chrome already remembers "allow on every visit"
-    if (dir && !dirOk) {
-      dir.requestPermission({ mode: 'read' }).then(function (p) { if (p === 'granted') { dirOk = true; scan(); } }).catch(function () {});
-    }
+    askDir();
     resume();
     tick();
   });
+
+  // asking again is instant when Chrome already remembers "allow on every visit"; needs a click
+  function askDir() {
+    if (dir && !dirOk) {
+      dir.requestPermission({ mode: 'read' }).then(function (p) { if (p === 'granted') { dirOk = true; scan(); } }).catch(function () {});
+    }
+  }
+
+  // Sound may start without a click when Chrome allows it: the shop's player shortcut starts Chrome
+  // with --autoplay-policy=no-user-gesture-required, and Chrome also allows it on sites that often play media.
+  function autoplayAllowed() {
+    try {
+      var C = window.AudioContext || window.webkitAudioContext;
+      var ctx = new C();
+      var ok = ctx.state === 'running';
+      ctx.close();
+      return ok;
+    } catch (_) { return false; }
+  }
 
   // the remote opens in its own tab so this tab keeps playing; the same tab is reused on every click
   function openRemote() { window.open('request.html', 'rb-remote'); }
@@ -84,7 +101,7 @@
   });
 
   $('gateDir').addEventListener('click', pickDir);
-  $('dirBtn').addEventListener('click', pickDir);
+  $('dirBtn').addEventListener('click', function () { if (dir && !dirOk) askDir(); else pickDir(); });
 
   /* ---------- local folder ---------- */
   function canPick() { return 'showDirectoryPicker' in window; }
@@ -581,5 +598,9 @@
   setInterval(clock, 10000);
   setInterval(progress, 1000);
   loadScript();
-  restoreDir().then(tick);
+  if (autoplayAllowed()) unlocked = true;
+  restoreDir().then(function () {
+    if (unlocked && dir && !dirOk) toast('กด 📁 มุมขวาบนเพื่ออนุญาตโฟลเดอร์เพลง (เลือก "อนุญาตทุกครั้ง")', 15000);
+    tick();
+  });
 })();
