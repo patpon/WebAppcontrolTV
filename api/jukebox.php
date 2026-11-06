@@ -481,7 +481,8 @@ function public_state($st, $set, $staff)
             'guestRequests' => (bool)$set['guestRequests'], 'maxPerGuest' => (int)$set['maxPerGuest'],
             'maxMinutes' => (int)$set['maxMinutes'], 'canSearch' => $set['apiKey'] !== '',
             'hasFallback' => fallback_count($set) > 0,
-            'hasLibrary' => (int)$lm['count'] > 0 && player_has_folder()
+            'hasLibrary' => (int)$lm['count'] > 0 && player_has_folder(),
+            'libCount' => player_has_folder() ? (int)$lm['count'] : 0
         ),
         'staff' => $staff
     );
@@ -529,6 +530,21 @@ switch ($action) {
             unset($r);
         }
         out(array('ok' => true, 'results' => $res));
+
+    case 'songs':
+        // browse the shop's own songs page by page (the list is already sorted by the player)
+        $set = jb_settings();
+        if (!$staff && !$set['guestRequests']) fail('ตอนนี้ปิดรับขอเพลงชั่วคราว', 403);
+        $all = player_has_folder() ? lib_songs() : array();
+        $offset = max(0, isset($_GET['offset']) ? (int)$_GET['offset'] : 0);
+        $limit = max(1, min(200, isset($_GET['limit']) ? (int)$_GET['limit'] : 60));
+        $page = array();
+        foreach (array_slice($all, $offset, $limit) as $x) {
+            $slash = strrpos($x['p'], '/');
+            $page[] = array('kind' => 'local', 'path' => $x['p'], 'title' => $x['t'], 'dur' => 0,
+                'folder' => $slash === false ? '' : substr($x['p'], 0, $slash));
+        }
+        out(array('ok' => true, 'total' => count($all), 'offset' => $offset, 'songs' => $page));
 
     case 'add':
         require_post();

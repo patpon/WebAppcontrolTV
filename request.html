@@ -47,6 +47,16 @@
       <div id="results" class="results"></div>
     </section>
 
+    <section class="card lib-card hidden" id="libCard">
+      <button class="lib-head" data-act="libToggle" id="libHead">
+        <span>📁 รายชื่อเพลงในร้าน <small class="muted" id="libCount"></small></span><span class="lib-arrow" id="libArrow">ดูทั้งหมด ▾</span>
+      </button>
+      <div id="libBody" class="hidden">
+        <div id="libList" class="lib-list"></div>
+        <button class="btn hidden" data-act="libMore" id="libMore">โหลดเพิ่ม</button>
+      </div>
+    </section>
+
     <section>
       <h3 class="sec-title">คิวเพลง <small class="muted" id="qCount"></small></h3>
       <ol id="queue" class="qlist"></ol>

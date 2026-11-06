@@ -76,6 +76,9 @@
     var open = s.rules.guestRequests || staff;
     $('closed').classList.toggle('hidden', open);
     $('searchCard').classList.toggle('hidden', !open);
+    $('libCard').classList.toggle('hidden', !open || !s.rules.hasLibrary);
+    $('libCount').textContent = s.rules.libCount ? '· ' + s.rules.libCount + ' เพลง' : '';
+    if (lib.open && lib.songs.length) libRender();
     var canSearch = s.rules.canSearch || s.rules.hasLibrary;
     $('q').placeholder = canSearch ? 'ค้นหาชื่อเพลง / ศิลปิน หรือวางลิงก์ YouTube' : 'วางลิงก์ YouTube ที่นี่';
     if (!results.length && !searching) {
@@ -267,6 +270,42 @@
   }
   var lastQ = '';
 
+  /* full list of the shop's songs, a page at a time */
+  var lib = { open: false, songs: [], total: 0, loading: false };
+
+  function libToggle() {
+    lib.open = !lib.open;
+    $('libBody').classList.toggle('hidden', !lib.open);
+    $('libArrow').textContent = lib.open ? 'ซ่อน ▴' : 'ดูทั้งหมด ▾';
+    if (lib.open) { lib.songs = []; libLoad(); } // fresh list each time it is opened
+  }
+
+  function libLoad() {
+    if (lib.loading) return;
+    lib.loading = true;
+    if (!lib.songs.length) $('libList').innerHTML = '<p class="muted small-text" style="padding:12px">กำลังโหลด…</p>';
+    JB.call('songs', { query: 'offset=' + lib.songs.length + '&limit=100&dev=' + encodeURIComponent(JB.device()) }).then(function (d) {
+      lib.loading = false;
+      lib.total = d.total;
+      lib.songs = lib.songs.concat(d.songs);
+      libRender();
+    }).catch(function (err) { lib.loading = false; toast(err.message); });
+  }
+
+  function libRender() {
+    var inQueue = {};
+    if (s) s.queue.concat(s.now ? [s.now] : []).forEach(function (q) { if (q.kind === 'local' && q.src !== 'fallback') inQueue[q.path] = 1; });
+    $('libList').innerHTML = lib.songs.length ? lib.songs.map(function (x, i) {
+      var queued = inQueue[x.path];
+      return '<div class="lib-row' + (queued ? ' queued' : '') + '"><span class="n">' + (i + 1) + '</span>' +
+        '<span class="t"><b>' + esc(x.title) + '</b>' + (x.folder ? '<span>📁 ' + esc(x.folder) + '</span>' : '') + '</span>' +
+        (queued ? '<span class="small-text muted">ในคิวแล้ว</span>'
+                : '<button class="btn primary small" data-act="libPick" data-i="' + i + '">ขอเพลง</button>') + '</div>';
+    }).join('') : '<p class="muted small-text" style="padding:12px">ยังไม่มีเพลงในเครื่อง</p>';
+    $('libMore').classList.toggle('hidden', lib.songs.length >= lib.total);
+    $('libMore').textContent = 'โหลดเพิ่ม (เหลืออีก ' + (lib.total - lib.songs.length) + ' เพลง)';
+  }
+
   function cmd(type, extra) {
     var body = extra || {};
     body.type = type;
@@ -326,6 +365,9 @@
     if (act === 'close') { closeModal(); pending = null; }
     else if (act === 'profile') { pending = null; profileForm(); }
     else if (act === 'pick') askSong(results[+b.dataset.i]);
+    else if (act === 'libPick') askSong(lib.songs[+b.dataset.i]);
+    else if (act === 'libToggle') libToggle();
+    else if (act === 'libMore') libLoad();
     else if (act === 'searchYt') search(lastQ, 'yt');
     else if (act === 'add') add(false);
     else if (act === 'addNext') add(true);
