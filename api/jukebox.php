@@ -14,6 +14,11 @@
  * Player (staff token)
  *   POST ?action=report   {id, pos, dur, paused, volume}  heartbeat; returns state
  *   POST ?action=advance  {from, error?}                   current song ended or failed
+ *   POST ?action=library  {hash, songs:[{p, t}]}          music files in the player PC's folder
+ *
+ * Songs are either YouTube videos (kind "yt", vid) or files in a folder on the shop PC (kind "local",
+ * path relative to that folder). Local files never leave the PC: only their names are sent here so
+ * guests can search and request them; music.html plays them straight from the disk.
  *
  * Files live in data/jukebox/ as .php files that exit immediately (see backup_config in lib.php),
  * because nginx on Plesk serves static files without reading .htaccess.
@@ -24,6 +29,7 @@ require __DIR__ . '/lib.php';
 define('JB_DIR', ROOT . '/data/jukebox');
 define('JB_MAX_QUEUE', 100);
 define('JB_HISTORY', 40);
+define('JB_MAX_LIBRARY', 30000);
 define('JB_DAILY_SEARCHES', 90); // free quota is 10,000 units/day and one search costs ~101
 define('JB_GUARD', "<?php http_response_code(404); exit; ?>\n");
 
@@ -36,6 +42,7 @@ function jb_defaults()
         'noRepeatMinutes' => 60,
         'interruptFallback' => true,
         'fallbackShuffle' => true,
+        'fallbackSource' => 'both', // youtube | local | both
         'fallback' => '',
         'blockWords' => '',
         'apiKey' => ''
@@ -300,11 +307,71 @@ function build_pool($text, $key, &$warn)
     return $pool;
 }
 
+/* ---------- local library ---------- */
+function lib_meta() { return jb_read('libmeta', array('hash' => '', 'count' => 0)); }
+function lib_songs() { $l = jb_read('library', array()); return isset($l['songs']) ? $l['songs'] : array(); }
+
+function lib_find($path)
+{
+    foreach (lib_songs() as $x) if ($x['p'] === $path) return $x;
+    return null;
+}
+
+/* every word of the query must appear in the file path ("artist - title.mp3", folder names) */
+function lib_search($q)
+{
+    $words = preg_split('/\s+/u', mb_strtolower($q, 'UTF-8'), -1, PREG_SPLIT_NO_EMPTY);
+    $out = array();
+    foreach (lib_songs() as $x) {
+        $hay = mb_strtolower($x['p'], 'UTF-8');
+        $ok = true;
+        foreach ($words as $w) if (mb_strpos($hay, $w) === false) { $ok = false; break; }
+        if (!$ok) continue;
+        $out[] = array('kind' => 'local', 'path' => $x['p'], 'title' => $x['t'], 'dur' => 0);
+        if (count($out) >= 40) break;
+    }
+    return $out;
+}
+
+function ikey($it)
+{
+    return (isset($it['kind']) && $it['kind'] === 'local') ? 'L:' . $it['path'] : 'Y:' . $it['vid'];
+}
+
+/* songs the player may pick when nobody has requested anything */
+function fallback_candidates($set)
+{
+    $c = array();
+    if ($set['fallbackSource'] !== 'local') {
+        foreach (jb_read('pool', array()) as $x) $c[] = array('kind' => 'yt', 'vid' => $x['vid'], 'path' => '', 'title' => $x['title'], 'dur' => (int)$x['dur']);
+    }
+    if ($set['fallbackSource'] !== 'youtube' && player_has_folder()) {
+        foreach (lib_songs() as $x) $c[] = array('kind' => 'local', 'vid' => '', 'path' => $x['p'], 'title' => $x['t'], 'dur' => 0);
+    }
+    return $c;
+}
+
+/* the player reports whether it can read the folder (Chrome asks again after a restart until "allow on every visit") */
+function player_has_folder()
+{
+    $p = jb_read('player', array());
+    return !isset($p['local']) || $p['local'] || $p['seen'] < time() - 60;
+}
+
+function fallback_count($set)
+{
+    $n = 0;
+    if ($set['fallbackSource'] !== 'local') $n += count(jb_read('pool', array()));
+    if ($set['fallbackSource'] !== 'youtube' && player_has_folder()) $n += (int)lib_meta()['count'];
+    return $n;
+}
+
 /* ---------- queue logic ---------- */
 function new_item($vid, $meta, $src, $name, $room, $dev)
 {
     return array(
         'id' => substr(bin2hex(random_bytes(6)), 0, 10), 'vid' => $vid,
+        'kind' => isset($meta['kind']) ? $meta['kind'] : 'yt', 'path' => isset($meta['path']) ? (string)$meta['path'] : '',
         'title' => (string)$meta['title'], 'channel' => isset($meta['channel']) ? (string)$meta['channel'] : '',
         'dur' => isset($meta['dur']) ? (int)$meta['dur'] : 0, 'src' => $src,
         'by' => $name, 'room' => $room, 'dev' => $dev, 'at' => time(), 'start' => 0
@@ -314,7 +381,8 @@ function new_item($vid, $meta, $src, $name, $room, $dev)
 function push_history(&$st, $item, $note)
 {
     if (!$item) return;
-    array_unshift($st['history'], array('vid' => $item['vid'], 'title' => $item['title'], 'by' => $item['by'],
+    array_unshift($st['history'], array('vid' => $item['vid'], 'key' => ikey($item),
+        'kind' => isset($item['kind']) ? $item['kind'] : 'yt', 'title' => $item['title'], 'by' => $item['by'],
         'room' => $item['room'], 'src' => $item['src'], 'at' => time(), 'note' => $note));
     $st['history'] = array_slice($st['history'], 0, JB_HISTORY);
 }
@@ -330,14 +398,19 @@ function advance(&$st, $set, $note)
         $next = $st['resume'];
         $st['resume'] = null;
     } else {
-        $pool = jb_read('pool', array());
+        $pool = fallback_candidates($set);
         if ($pool) {
             if ($set['fallbackShuffle'] && count($pool) > 1) {
                 $recent = array();
-                foreach (array_slice($st['history'], 0, min(20, (int)floor(count($pool) / 2))) as $h) $recent[$h['vid']] = 1;
-                $choices = array_values(array_filter($pool, function ($p) use ($recent) { return !isset($recent[$p['vid']]); }));
-                if (!$choices) $choices = $pool;
-                $pick = $choices[mt_rand(0, count($choices) - 1)];
+                foreach (array_slice($st['history'], 0, min(30, (int)floor(count($pool) / 2))) as $h) {
+                    $recent[isset($h['key']) ? $h['key'] : 'Y:' . $h['vid']] = 1;
+                }
+                $pick = null;
+                for ($try = 0; $try < 40 && !$pick; $try++) {
+                    $c = $pool[mt_rand(0, count($pool) - 1)];
+                    if (!isset($recent[ikey($c)])) $pick = $c;
+                }
+                if (!$pick) $pick = $pool[mt_rand(0, count($pool) - 1)];
             } else {
                 $i = ((int)$st['poolPos']) % count($pool);
                 $pick = $pool[$i];
@@ -388,11 +461,14 @@ function public_state($st, $set, $staff)
     };
     $p = jb_read('player', array());
     $online = isset($p['seen']) && $p['seen'] > time() - 20;
+    $lm = lib_meta();
     $out = array(
         'ok' => true, 'rev' => $st['rev'], 'time' => time(),
         'now' => $strip($st['now']),
         'queue' => array_map($strip, $st['queue']),
-        'history' => array_slice(array_map(function ($h) { return array('vid' => $h['vid'], 'title' => $h['title'], 'by' => $h['by'], 'src' => $h['src']); }, $st['history']), 0, 10),
+        'history' => array_slice(array_map(function ($h) {
+            return array('vid' => $h['vid'], 'kind' => isset($h['kind']) ? $h['kind'] : 'yt', 'title' => $h['title'], 'by' => $h['by'], 'src' => $h['src']);
+        }, $st['history']), 0, 10),
         'player' => array(
             'online' => $online,
             'pos' => isset($p['pos']) ? (int)$p['pos'] : 0,
@@ -404,7 +480,8 @@ function public_state($st, $set, $staff)
         'rules' => array(
             'guestRequests' => (bool)$set['guestRequests'], 'maxPerGuest' => (int)$set['maxPerGuest'],
             'maxMinutes' => (int)$set['maxMinutes'], 'canSearch' => $set['apiKey'] !== '',
-            'hasFallback' => count(jb_read('pool', array())) > 0
+            'hasFallback' => fallback_count($set) > 0,
+            'hasLibrary' => (int)$lm['count'] > 0 && player_has_folder()
         ),
         'staff' => $staff
     );
@@ -413,6 +490,10 @@ function public_state($st, $set, $staff)
         unset($s['apiKey']);
         $s['hasKey'] = $set['apiKey'] !== '';
         $s['poolCount'] = count(jb_read('pool', array()));
+        $s['libraryCount'] = (int)$lm['count'];
+        $s['libraryHash'] = $lm['hash'];
+        $s['libraryAt'] = isset($lm['at']) ? (int)$lm['at'] : 0;
+        $s['playerFolder'] = player_has_folder();
         $lim = jb_read('limits', array('day' => '', 'searches' => 0));
         $s['searchesToday'] = $lim['day'] === date('Ymd') ? (int)$lim['searches'] : 0;
         $s['searchesMax'] = JB_DAILY_SEARCHES;
@@ -433,9 +514,10 @@ switch ($action) {
     case 'search':
         $set = jb_settings();
         if (!$staff && !$set['guestRequests']) fail('ตอนนี้ปิดรับขอเพลงชั่วคราว', 403);
-        if ($set['apiKey'] === '') fail('ยังไม่ได้ตั้ง YouTube API key — วางลิงก์ YouTube แทนได้', 400);
         $q = clean_text(isset($_GET['q']) ? $_GET['q'] : '', 80);
         if (pw_len($q) < 2) fail('พิมพ์ชื่อเพลงอย่างน้อย 2 ตัว');
+        if (isset($_GET['src']) && $_GET['src'] === 'local') out(array('ok' => true, 'results' => lib_search($q)));
+        if ($set['apiKey'] === '') fail('ยังไม่ได้ตั้ง YouTube API key — วางลิงก์ YouTube แทนได้', 400);
         $dev = preg_replace('/[^A-Za-z0-9_-]/', '', substr(isset($_GET['dev']) ? (string)$_GET['dev'] : '', 0, 40));
         if (!$staff && ($dev === '' || limit_hit('search-dev', 10, 600, $dev) || limit_hit('search-ip', 80, 600, client_id()))) {
             fail('ค้นหาถี่เกินไป รอสักครู่', 429);
@@ -453,21 +535,30 @@ switch ($action) {
         $b = body_json();
         $set = jb_settings();
         if (!$staff && !$set['guestRequests']) fail('ตอนนี้ปิดรับขอเพลงชั่วคราว', 403);
-        $vid = parse_vid(isset($b['vid']) ? $b['vid'] : (isset($b['url']) ? $b['url'] : ''));
-        if ($vid === '') fail('ไม่ใช่ลิงก์ YouTube ที่ถูกต้อง');
+        $path = isset($b['path']) ? (string)$b['path'] : '';
+        $vid = $path === '' ? parse_vid(isset($b['vid']) ? $b['vid'] : (isset($b['url']) ? $b['url'] : '')) : '';
+        if ($path === '' && $vid === '') fail('ไม่ใช่ลิงก์ YouTube ที่ถูกต้อง');
         $name = clean_text(isset($b['name']) ? $b['name'] : '', 20);
         $room = clean_text(isset($b['room']) ? $b['room'] : '', 16);
         $dev = preg_replace('/[^A-Za-z0-9_-]/', '', substr((string)(isset($b['dev']) ? $b['dev'] : ''), 0, 40));
         if (!$staff && $name === '') fail('ใส่ชื่อของคุณก่อน');
         if (!$staff && $dev === '') fail('bad device');
         if (!$staff && (limit_hit('add-dev', 6, 600, $dev) || limit_hit('add-ip', 60, 600, client_id()))) fail('ขอเพลงถี่เกินไป รอสักครู่', 429);
-        $meta = video_meta($vid, $set['apiKey']); // network call outside the lock
+        if ($path !== '') {
+            $song = lib_find($path);
+            if (!$song) fail('ไม่พบเพลงนี้ในเครื่องของร้านแล้ว', 404);
+            $meta = array('kind' => 'local', 'path' => $song['p'], 'title' => $song['t'], 'channel' => '', 'dur' => 0);
+        } else {
+            $meta = video_meta($vid, $set['apiKey']); // network call outside the lock
+            $meta['kind'] = 'yt';
+        }
+        $key = ikey(array('kind' => $meta['kind'], 'path' => $path, 'vid' => $vid));
 
         jb_lock();
         $st = jb_state();
         if (count($st['queue']) >= JB_MAX_QUEUE) fail('คิวเต็มแล้ว');
-        if (($st['now'] && $st['now']['vid'] === $vid && $st['now']['src'] !== 'fallback')) fail('เพลงนี้กำลังเล่นอยู่');
-        foreach ($st['queue'] as $q) if ($q['vid'] === $vid) fail('เพลงนี้อยู่ในคิวแล้ว');
+        if (($st['now'] && ikey($st['now']) === $key && $st['now']['src'] !== 'fallback')) fail('เพลงนี้กำลังเล่นอยู่');
+        foreach ($st['queue'] as $q) if (ikey($q) === $key) fail('เพลงนี้อยู่ในคิวแล้ว');
         if (!$staff) {
             $mine = 0;
             foreach ($st['queue'] as $q) if ($q['dev'] === $dev) $mine++;
@@ -475,7 +566,7 @@ switch ($action) {
             if ($set['maxMinutes'] > 0 && $meta['dur'] > $set['maxMinutes'] * 60) fail('เพลงยาวเกิน ' . $set['maxMinutes'] . ' นาที');
             if ($set['noRepeatMinutes'] > 0) {
                 foreach ($st['history'] as $h) {
-                    if ($h['vid'] === $vid && $h['src'] !== 'fallback' && $h['at'] > time() - $set['noRepeatMinutes'] * 60) fail('เพลงนี้เพิ่งเล่นไป ลองเพลงอื่นก่อน');
+                    if ((isset($h['key']) ? $h['key'] : 'Y:' . $h['vid']) === $key && $h['src'] !== 'fallback' && $h['at'] > time() - $set['noRepeatMinutes'] * 60) fail('เพลงนี้เพิ่งเล่นไป ลองเพลงอื่นก่อน');
                 }
             }
             foreach (preg_split('/\s*,\s*/', mb_strtolower($set['blockWords'], 'UTF-8')) as $w) {
@@ -533,6 +624,7 @@ switch ($action) {
             if (isset($in[$k])) $set[$k] = max(0, min($max, (int)$in[$k]));
         }
         if (isset($in['blockWords'])) $set['blockWords'] = clean_text($in['blockWords'], 500);
+        if (isset($in['fallbackSource']) && in_array($in['fallbackSource'], array('youtube', 'local', 'both'), true)) $set['fallbackSource'] = $in['fallbackSource'];
         if (isset($in['fallback'])) $set['fallback'] = substr(str_replace("\r", '', (string)$in['fallback']), 0, 20000);
         if (isset($in['apiKey']) && $in['apiKey'] !== '') {
             $k = trim((string)$in['apiKey']);
@@ -550,9 +642,9 @@ switch ($action) {
         if ($pool !== null) {
             jb_write('pool', $pool);
             $st['poolPos'] = 0;
-            if (!$st['now'] && $pool) advance($st, $set, '');
-            jb_save_state($st);
         }
+        if (!$st['now'] && fallback_count($set) > 0) advance($st, $set, '');
+        if ($pool !== null || $st['now']) jb_save_state($st);
         $res = public_state($st, $set, true);
         $res['warnings'] = $warn;
         out($res);
@@ -563,18 +655,39 @@ switch ($action) {
         $b = body_json();
         $id = isset($b['id']) ? (string)$b['id'] : '';
         $p = array('seen' => time(), 'id' => $id, 'pos' => max(0, (int)(isset($b['pos']) ? $b['pos'] : 0)),
-            'dur' => max(0, (int)(isset($b['dur']) ? $b['dur'] : 0)));
+            'dur' => max(0, (int)(isset($b['dur']) ? $b['dur'] : 0)), 'local' => !empty($b['local']));
         jb_write('player', $p);
         $st = jb_state();
         $set = jb_settings();
         // without an API key guest durations are unknown until the player reports them
-        if ($st['now'] && $st['now']['id'] === $id && $st['now']['src'] === 'guest' && $set['maxMinutes'] > 0 &&
+        if ($st['now'] && $st['now']['id'] === $id && $st['now']['src'] === 'guest' && substr(ikey($st['now']), 0, 2) === 'Y:' && $set['maxMinutes'] > 0 &&
             $p['dur'] > $set['maxMinutes'] * 60 + 30) {
             jb_lock();
             $st = jb_state();
             if ($st['now'] && $st['now']['id'] === $id) { advance($st, $set, 'too long'); jb_save_state($st); }
         }
         out(public_state($st, $set, true));
+
+    case 'library':
+        require_post();
+        require_auth();
+        $b = body_json();
+        $songs = array();
+        $seen = array();
+        foreach ((isset($b['songs']) && is_array($b['songs']) ? $b['songs'] : array()) as $x) {
+            if (!is_array($x) || !isset($x['p']) || !is_string($x['p'])) continue;
+            // the path must stay byte-exact: the player looks the file up by it
+            $path = $x['p'];
+            if ($path === '' || strlen($path) > 600 || !preg_match('//u', $path) || preg_match('/[\x00-\x1F\x7F]/', $path) || isset($seen[$path])) continue;
+            $seen[$path] = 1;
+            $t = clean_text(isset($x['t']) ? $x['t'] : $path, 200);
+            $songs[] = array('p' => $path, 't' => $t !== '' ? $t : $path);
+            if (count($songs) >= JB_MAX_LIBRARY) break;
+        }
+        $hash = preg_replace('/[^A-Za-z0-9]/', '', substr(isset($b['hash']) ? (string)$b['hash'] : '', 0, 40));
+        jb_write('library', array('songs' => $songs));
+        jb_write('libmeta', array('hash' => $hash, 'count' => count($songs), 'at' => time()));
+        out(array('ok' => true, 'count' => count($songs)));
 
     case 'advance':
         require_post();
@@ -587,12 +700,12 @@ switch ($action) {
         $set = jb_settings();
         $curId = $st['now'] ? $st['now']['id'] : '';
         if ($curId === $from) { // ignore stale calls (song already changed by staff or another tab)
-            if ($err && $st['now'] && $st['now']['src'] === 'fallback') {
+            if ($err && $st['now'] && $st['now']['src'] === 'fallback' && substr(ikey($st['now']), 0, 2) === 'Y:') {
                 // drop broken fallback songs so they are not picked again
                 $bad = $st['now']['vid'];
                 jb_write('pool', array_values(array_filter(jb_read('pool', array()), function ($x) use ($bad) { return $x['vid'] !== $bad; })));
             }
-            if ($st['now'] || $st['queue'] || $st['resume'] || jb_read('pool', array())) {
+            if ($st['now'] || $st['queue'] || $st['resume'] || fallback_count($set) > 0) {
                 advance($st, $set, $err ? 'error ' . $err : '');
                 jb_save_state($st);
             }

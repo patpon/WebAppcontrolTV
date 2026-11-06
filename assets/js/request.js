@@ -1,4 +1,5 @@
-/* request.html — guests (via the QR on the music screen) search YouTube or paste a link to queue a song.
+/* request.html — guests (via the QR on the music screen) search the shop's own music folder or YouTube,
+   or paste a YouTube link, to queue a song.
    Staff who log in get remote controls (pause/skip/volume/reorder) and the jukebox settings. */
 (function () {
   'use strict';
@@ -17,6 +18,7 @@
   var settingsShown = false;
   var timer = null;
   var volDragging = false;
+  var searching = false;
 
   function loadProfile() {
     try { return JSON.parse(localStorage.getItem(PROFILE_KEY)) || null; } catch (_) { return null; }
@@ -45,6 +47,7 @@
   /* ---------- render ---------- */
   function who(it) {
     if (it.src === 'fallback') return 'เพลงเปิดรอ';
+    if (it.kind === 'local' && !it.by) return 'เพลงในร้าน';
     return 'ขอโดย ' + esc(it.by || 'ลูกค้า') + (it.room ? ' · ' + esc(it.room) : '');
   }
 
@@ -55,7 +58,7 @@
 
     // now playing
     var n = s.now;
-    $('nowThumb').src = n ? JB.thumb(n.vid) : 'assets/img/lotus.svg';
+    $('nowThumb').src = n ? JB.thumbOf(n) : 'assets/img/lotus.svg';
     $('nowLabel').textContent = !n ? 'ยังไม่มีเพลง' : (s.player.paused ? 'หยุดชั่วคราว' : 'กำลังเล่น');
     $('nowTitle').textContent = n ? n.title : 'ขอเพลงแรกได้เลย';
     $('nowBy').innerHTML = n ? who(n) + (n.mine ? ' <span class="tag" style="color:#241a05;background:var(--gold);border-radius:99px;padding:1px 8px;font-size:11px">เพลงของคุณ</span>' : '') : '';
@@ -73,9 +76,9 @@
     var open = s.rules.guestRequests || staff;
     $('closed').classList.toggle('hidden', open);
     $('searchCard').classList.toggle('hidden', !open);
-    var canSearch = s.rules.canSearch;
+    var canSearch = s.rules.canSearch || s.rules.hasLibrary;
     $('q').placeholder = canSearch ? 'ค้นหาชื่อเพลง / ศิลปิน หรือวางลิงก์ YouTube' : 'วางลิงก์ YouTube ที่นี่';
-    if (!results.length) {
+    if (!results.length && !searching) {
       $('hint').innerHTML = canSearch ? 'ขอได้ครั้งละ ' + (s.rules.maxPerGuest || 'ไม่จำกัด') + ' เพลง' + (s.rules.maxMinutes ? ' · ยาวไม่เกิน ' + s.rules.maxMinutes + ' นาที' : '')
         : 'วิธีขอเพลง: เปิดแอป YouTube → เลือกเพลง → กด <b>แชร์</b> → <b>คัดลอกลิงก์</b> → กลับมาวางที่ช่องด้านบน ' +
           '<a class="btn small" href="https://m.youtube.com/" target="_blank" rel="noopener">เปิด YouTube</a>';
@@ -89,7 +92,7 @@
                  '<button class="btn icon small" data-act="up" data-id="' + q.id + '" title="เลื่อนขึ้น">▲</button>' : '') +
         '<button class="btn icon small danger" data-act="remove" data-id="' + q.id + '" title="ลบ">✕</button></span>' : '';
       return '<li class="' + (q.mine ? 'mine' : '') + '"><span class="n">' + (i + 1) + '</span>' +
-        '<img src="' + JB.thumb(q.vid) + '" alt="" loading="lazy">' +
+        '<img src="' + JB.thumbOf(q) + '" alt="" loading="lazy">' +
         '<span class="t"><b>' + esc(q.title) + '</b><span>' + who(q) + (q.dur ? ' · ' + JB.fmt(q.dur) : '') +
         (q.mine ? '<span class="tag">ของคุณ</span>' : '') + '</span></span>' + tools + '</li>';
     }).join('') : '<li class="empty">คิวว่าง — ขอเพลงได้เลย</li>';
@@ -97,7 +100,7 @@
     var hist = (s.history || []).filter(function (h) { return h.src !== 'fallback'; }).slice(0, 5);
     $('histSec').classList.toggle('hidden', !hist.length);
     $('history').innerHTML = hist.map(function (h) {
-      return '<li><img src="' + JB.thumb(h.vid) + '" alt="" loading="lazy"><span class="t"><b>' + esc(h.title) + '</b><span>' + esc(h.by || '') + '</span></span></li>';
+      return '<li><img src="' + JB.thumbOf(h) + '" alt=""" loading="lazy"><span class="t"><b>' + esc(h.title) + '</b><span>' + esc(h.by || '') + '</span></span></li>';
     }).join('');
 
     // staff settings
@@ -132,7 +135,15 @@
       '<h2 style="margin-top:8px">เพลงเปิดรอ (เมื่อไม่มีคนขอ)</h2>' +
       '<label class="f">ลิงก์ YouTube บรรทัดละ 1 ลิงก์ — ใส่ได้ทั้งเพลงเดี่ยว, เพลงยาว (รวมเพลง 1–3 ชม.) และเพลย์ลิสต์' +
         '<textarea rows="6" id="setFallback" placeholder="https://www.youtube.com/watch?v=...\nhttps://www.youtube.com/playlist?list=...">' + esc(c.fallback) + '</textarea></label>' +
-      '<p class="small-text muted" style="margin:0">ตอนนี้มี ' + (c.poolCount || 0) + ' เพลงในรายการเปิดรอ · เพลย์ลิสต์ต้องมี API key</p>' +
+      '<p class="small-text muted" style="margin:0">ตอนนี้มี ' + (c.poolCount || 0) + ' เพลงจาก YouTube ในรายการเปิดรอ · เพลย์ลิสต์ต้องมี API key</p>' +
+      '<label class="f">เปิดรอจาก<select id="setSource">' +
+        [['both', 'YouTube + ไฟล์ในคอมกลาง'], ['local', 'ไฟล์ในคอมกลางอย่างเดียว'], ['youtube', 'YouTube อย่างเดียว']].map(function (o) {
+          return '<option value="' + o[0] + '"' + (c.fallbackSource === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+        }).join('') + '</select></label>' +
+      '<p class="small-text muted" style="margin:0">ไฟล์ในคอมกลาง: ' + (c.libraryCount
+        ? c.libraryCount + ' เพลง' + (c.libraryAt ? ' (อ่านล่าสุด ' + new Date(c.libraryAt * 1000).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }) + ')' : '') +
+          (c.playerFolder ? '' : ' — <b style="color:var(--danger)">เครื่องเล่นยังไม่ได้อนุญาตโฟลเดอร์</b> กด "เริ่มเล่นเพลง" ที่คอมกลาง')
+        : 'ยังไม่ได้เลือก — ที่คอมกลางเปิด music.html แล้วกด 📁 เลือกโฟลเดอร์ MP3/MP4') + '</p>' +
       '<label class="check"><input type="checkbox" id="setShuffle"' + (c.fallbackShuffle ? ' checked' : '') + '> สุ่มลำดับเพลงเปิดรอ</label>' +
       '<label class="check"><input type="checkbox" id="setInterrupt"' + (c.interruptFallback ? ' checked' : '') + '> มีคนขอเพลง → ตัดเพลงเปิดรอทันที (แล้วกลับมาเล่นต่อจากเดิม)</label>' +
       '<h2 style="margin-top:8px">ค้นหาเพลงด้วยชื่อ (YouTube API key)</h2>' +
@@ -187,7 +198,7 @@
     var staff = s && s.staff;
     if (!staff && !profile) { profileForm(); return; }
     modal('<div class="modal-head"><h3>ขอเพลงนี้?</h3></div><div class="modal-body">' +
-      '<div class="pick"><img src="' + JB.thumb(song.vid) + '" alt=""><div><b>' + esc(song.title || 'เพลงจากลิงก์ที่วาง') + '</b>' +
+      '<div class="pick"><img src="' + JB.thumbOf(song) + '" alt=""><div><b>' + esc(song.title || 'เพลงจากลิงก์ที่วาง') + '</b>' +
       (song.dur ? '<div class="muted small-text">' + JB.fmt(song.dur) + '</div>' : '') + '</div></div>' +
       '<div class="actions"><button class="btn" data-act="close">ยกเลิก</button>' +
       (staff ? '<button class="btn" data-act="addNext">เล่นถัดไป</button>' : '') +
@@ -198,8 +209,10 @@
     var song = pending;
     if (!song) return;
     closeModal();
-    var body = { vid: song.vid, dev: JB.device(), next: !!next,
+    var body = { dev: JB.device(), next: !!next,
       name: profile ? profile.name : '', room: profile ? profile.room : '' };
+    if (song.kind === 'local') body.path = song.path;
+    else body.vid = song.vid;
     JB.call('add', { json: body }).then(function (r) {
       pending = null;
       toast(r.playing ? '♪ เล่นเพลงของคุณแล้ว' : '✓ ได้คิวที่ ' + r.position);
@@ -228,18 +241,31 @@
       askSong({ vid: vid, title: '' });
       return;
     }
-    if (!s || !s.rules.canSearch) { toast('ค้นหาด้วยชื่อยังไม่เปิดใช้ — วางลิงก์ YouTube แทน'); return; }
-    $('results').innerHTML = '<p class="muted small-text">กำลังค้นหา…</p>';
-    JB.call('search', { query: 'q=' + encodeURIComponent(q) + '&dev=' + encodeURIComponent(JB.device()) }).then(function (d) {
-      results = d.results || [];
-      $('hint').textContent = results.length ? 'ผลการค้นหา "' + q + '"' : 'ไม่พบเพลง ลองคำอื่น';
-      $('results').innerHTML = results.map(function (r, i) {
-        return '<div class="res' + (r.tooLong ? ' off' : '') + '"><img src="' + JB.thumb(r.vid) + '" alt="" loading="lazy">' +
-          '<span class="t"><b>' + esc(r.title) + '</b><span>' + esc(r.channel) + ' · ' + JB.fmt(r.dur) + (r.tooLong ? ' · ยาวเกินกำหนด' : '') + '</span></span>' +
-          '<button class="btn primary small" data-act="pick" data-i="' + i + '"' + (r.tooLong ? ' disabled' : '') + '>ขอเพลง</button></div>';
-      }).join('');
-    }).catch(function (err) { $('results').innerHTML = ''; toast(err.message); });
+    if (!s || !(s.rules.canSearch || s.rules.hasLibrary)) { toast('ค้นหาด้วยชื่อยังไม่เปิดใช้ — วางลิงก์ YouTube แทน'); return; }
+    search(q, s.rules.hasLibrary ? 'local' : 'yt');
   });
+
+  /* the shop's own folder first (free, works without an API key), YouTube on request */
+  function search(q, src) {
+    searching = true;
+    results = [];
+    $('results').innerHTML = '<p class="muted small-text">กำลังค้นหา…</p>';
+    JB.call('search', { query: 'q=' + encodeURIComponent(q) + '&dev=' + encodeURIComponent(JB.device()) + (src === 'local' ? '&src=local' : '') }).then(function (d) {
+      results = d.results || [];
+      if (src === 'local' && !results.length && s.rules.canSearch) { search(q, 'yt'); return; }
+      searching = false;
+      lastQ = q;
+      $('hint').textContent = results.length ? 'ผลการค้นหา "' + q + '"' + (src === 'local' ? ' — เพลงในร้าน' : ' — YouTube') : 'ไม่พบเพลง ลองคำอื่น';
+      $('results').innerHTML = results.map(function (r, i) {
+        var local = r.kind === 'local';
+        var sub = local ? 'เพลงในร้าน' : esc(r.channel) + ' · ' + JB.fmt(r.dur) + (r.tooLong ? ' · ยาวเกินกำหนด' : '');
+        return '<div class="res' + (r.tooLong ? ' off' : '') + '"><img src="' + JB.thumbOf(r) + '" alt="" loading="lazy">' +
+          '<span class="t"><b>' + esc(r.title) + '</b><span>' + sub + '</span></span>' +
+          '<button class="btn primary small" data-act="pick" data-i="' + i + '"' + (r.tooLong ? ' disabled' : '') + '>ขอเพลง</button></div>';
+      }).join('') + (src === 'local' && s.rules.canSearch ? '<button class="btn" data-act="searchYt">ค้นใน YouTube แทน</button>' : '');
+    }).catch(function (err) { searching = false; $('results').innerHTML = ''; toast(err.message); });
+  }
+  var lastQ = '';
 
   function cmd(type, extra) {
     var body = extra || {};
@@ -259,6 +285,7 @@
       blockWords: $('setBlock').value,
       fallback: $('setFallback').value,
       fallbackShuffle: $('setShuffle').checked,
+      fallbackSource: $('setSource').value,
       interruptFallback: $('setInterrupt').checked
     };
     if ($('setKey').value.trim()) body.apiKey = $('setKey').value.trim();
@@ -299,6 +326,7 @@
     if (act === 'close') { closeModal(); pending = null; }
     else if (act === 'profile') { pending = null; profileForm(); }
     else if (act === 'pick') askSong(results[+b.dataset.i]);
+    else if (act === 'searchYt') search(lastQ, 'yt');
     else if (act === 'add') add(false);
     else if (act === 'addNext') add(true);
     else if (act === 'toggle') cmd(s.player.paused ? 'play' : 'pause');

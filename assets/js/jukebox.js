@@ -58,6 +58,10 @@ var JB = (function () {
 
   function thumb(vid) { return 'https://i.ytimg.com/vi/' + encodeURIComponent(vid) + '/mqdefault.jpg'; }
 
+  function thumbOf(item) {
+    return item && item.kind === 'local' ? 'assets/img/note.svg' : thumb(item ? item.vid : '');
+  }
+
   function fmt(sec) {
     sec = Math.max(0, Math.floor(sec || 0));
     var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
@@ -65,7 +69,7 @@ var JB = (function () {
   }
 
   function looksLikeLink(s) {
-    return /youtu\.?be|^[A-Za-z0-9_-]{11}$/.test(String(s).trim());
+    return /youtu\.?be|^(?=.*[0-9_-])[A-Za-z0-9_-]{11}$/.test(String(s).trim()); // a bare id has a digit/_/- (not an 11-letter song name)
   }
 
   function requestUrl() {
@@ -73,5 +77,5 @@ var JB = (function () {
   }
 
   return { token: token, setToken: setToken, device: device, call: call, login: login,
-    thumb: thumb, fmt: fmt, looksLikeLink: looksLikeLink, requestUrl: requestUrl };
+    thumb: thumb, thumbOf: thumbOf, fmt: fmt, looksLikeLink: looksLikeLink, requestUrl: requestUrl };
 })();

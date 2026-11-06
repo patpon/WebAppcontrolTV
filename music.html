@@ -16,6 +16,7 @@
     <div class="brand"><img src="assets/img/lotus.svg" alt=""><span id="shop">ร้านระเบียงบัว ศรีสมาน</span></div>
     <div class="top-right">
       <span id="status" class="status"></span>
+      <button id="dirBtn" class="ghost hidden" title="เลือกโฟลเดอร์เพลง MP3/MP4 ในเครื่องนี้">📁 <span id="dirInfo">โฟลเดอร์เพลง</span></button>
       <span id="clock"></span>
       <button id="fsBtn" class="ghost" title="เต็มจอ (F)">⛶</button>
     </div>
@@ -23,7 +24,9 @@
 
   <main class="layout">
     <section class="main">
-      <div class="video"><div id="yt"></div>
+      <div class="video" id="stage"><div id="yt"></div>
+        <video id="local" playsinline preload="auto"></video>
+        <div id="art" class="art hidden"><div class="art-icon">♪</div><b id="artTitle"></b></div>
         <div id="idle" class="idle hidden">
           <div class="idle-icon">♪</div>
           <h2>ยังไม่มีเพลงในคิว</h2>
@@ -62,6 +65,8 @@
         <button type="submit">เข้าสู่ระบบ</button>
       </form>
       <button id="startBtn" class="hidden">▶ เริ่มเล่นเพลง</button>
+      <button id="gateDir" class="link-btn hidden">📁 เลือกโฟลเดอร์เพลงในเครื่อง (MP3/MP4)</button>
+      <p class="small" id="gateDirInfo"></p>
       <p class="err" id="gateErr"></p>
     </div>
   </div>
