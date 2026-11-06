@@ -36,6 +36,8 @@
   var songs = [];           // [{p, t}]
   var libHash = '';
   var libSent = '';
+  var libErr = '';          // last error sending the song list
+  var libRetryAt = 0;
   var scanning = false;
   var offlineRecent = [];
 
@@ -44,7 +46,7 @@
     $('gate').classList.toggle('hidden', !kind);
     $('loginForm').classList.toggle('hidden', kind !== 'login');
     $('startBtn').classList.toggle('hidden', kind !== 'start');
-    $('gateDir').classList.toggle('hidden', kind !== 'start' || !canPick());
+    $('gateDir').classList.toggle('hidden', kind !== 'start');
     $('gateText').textContent = text || '';
     $('gateErr').textContent = '';
     dirInfo();
@@ -93,13 +95,19 @@
   }
 
   function pickDir() {
+    if (!canPick()) {
+      toast('เบราว์เซอร์นี้เปิดโฟลเดอร์เพลงไม่ได้ — ใช้ Google Chrome หรือ Microsoft Edge บนคอมพิวเตอร์', 12000);
+      return;
+    }
     window.showDirectoryPicker({ id: 'rb-music', mode: 'read' }).then(function (h) {
       dir = h;
       dirOk = true;
       idb('readwrite', function (s) { return s.put(h, 'dir'); }).catch(function () {});
       scan();
     }).catch(function (err) {
-      if (err && err.name !== 'AbortError') toast('เปิดโฟลเดอร์ไม่ได้: ' + err.message);
+      // Chrome refuses whole drives, Desktop, Downloads and system folders, and then reports a plain cancel
+      if (err && err.name === 'AbortError') toast('ยังไม่ได้เลือกโฟลเดอร์ — ถ้า Chrome แจ้งว่า "มีไฟล์ระบบ" ให้ย้ายเพลงไปไว้ในโฟลเดอร์ย่อย เช่น D:\\เพลง แล้วเลือกโฟลเดอร์นั้น (เลือกทั้งไดรฟ์, Desktop, Downloads ไม่ได้)', 15000);
+      else toast('เปิดโฟลเดอร์ไม่ได้: ' + (err && err.message), 12000);
     });
   }
 
@@ -143,9 +151,12 @@
       files = f;
       songs = list;
       libHash = hashOf(list);
-      if (!list.length) toast('ไม่พบไฟล์เพลงในโฟลเดอร์ ' + dir.name);
+      libErr = '';
+      libRetryAt = 0;
+      if (!list.length) toast('ไม่พบไฟล์ MP3/MP4 ในโฟลเดอร์ "' + dir.name + '" (รวมโฟลเดอร์ย่อยแล้ว)', 12000);
+      else toast('พบ ' + list.length + ' เพลงในโฟลเดอร์ "' + dir.name + '"');
     } catch (err) {
-      toast('อ่านโฟลเดอร์ไม่ได้: ' + err.message);
+      toast('อ่านโฟลเดอร์ไม่ได้: ' + err.message, 12000);
       dirOk = false;
     }
     scanning = false;
@@ -155,18 +166,29 @@
 
   /* send the list of file names when it differs from what the server has */
   function syncLibrary(set) {
-    if (!dirOk || scanning || !libHash || set.libraryHash === libHash || libSent === libHash) return;
+    if (!dirOk || scanning || !libHash || set.libraryHash === libHash || libSent === libHash || Date.now() < libRetryAt) return;
     libSent = libHash;
+    dirInfo('กำลังส่งรายชื่อเพลง…');
     JB.call('library', { json: { hash: libHash, songs: songs } })
-      .then(function (r) { toast('อัปเดตรายชื่อเพลงในเครื่อง ' + r.count + ' เพลง'); })
-      .catch(function () { libSent = ''; });
+      .then(function (r) {
+        libErr = '';
+        dirInfo();
+        toast('ส่งรายชื่อเพลงขึ้นระบบแล้ว ' + r.count + ' เพลง — ลูกค้าค้นเพลงในร้านได้แล้ว');
+      })
+      .catch(function (err) {
+        libSent = '';
+        libErr = (err && err.message) || 'error';
+        libRetryAt = Date.now() + 60000;
+        dirInfo();
+        toast('ส่งรายชื่อเพลงไม่สำเร็จ: ' + libErr + ' — จะลองใหม่ใน 1 นาที', 12000);
+      });
   }
 
   function dirInfo(msg) {
     var pickable = canPick();
-    $('dirBtn').classList.toggle('hidden', !pickable);
-    $('dirInfo').textContent = msg || (dir ? (dirOk ? songs.length + ' เพลง' : 'รออนุญาต') : 'โฟลเดอร์เพลง');
-    $('gateDirInfo').textContent = !pickable ? '' : msg || (dir
+    $('dirBtn').classList.remove('hidden');
+    $('dirInfo').textContent = msg || (!pickable ? 'ใช้ Chrome/Edge' : dir ? (dirOk ? songs.length + ' เพลง' + (libErr ? ' · ส่งไม่สำเร็จ' : '') : 'รออนุญาต') : 'โฟลเดอร์เพลง');
+    $('gateDirInfo').textContent = !pickable ? 'เบราว์เซอร์นี้เปิดเพลงในเครื่องไม่ได้ — ใช้ Chrome หรือ Edge' : msg || (dir
       ? 'โฟลเดอร์ "' + dir.name + '"' + (dirOk ? ' · ' + songs.length + ' เพลง' : ' — กดเริ่มแล้วเลือก "อนุญาตทุกครั้ง"')
       : 'ไม่บังคับ — ใช้เปิดเพลงจากเครื่องนี้ได้ แม้เน็ตหลุด');
   }
@@ -398,8 +420,9 @@
       var st = yt.getPlayerState();
       if (s.player.paused && st === YT.PlayerState.PLAYING) yt.pauseVideo();
       if (!s.player.paused && unlocked && (st === YT.PlayerState.PAUSED || st === YT.PlayerState.CUED)) yt.playVideo();
-      // stuck loading for 25 s (no network, region block without an error event): move on
-      if (!playingSeen && unlocked && !s.player.paused && Date.now() - loadAt > 25000) { toast('ข้ามเพลงที่โหลดไม่ขึ้น'); advance(cur.id, 999); }
+      // stuck loading (no network, region block without an error event): move on.
+      // Wait 90 s, not less: YouTube may show ads before the song and those must not count as a stall.
+      if (!playingSeen && unlocked && !s.player.paused && Date.now() - loadAt > 90000) { toast('ข้ามเพลงที่โหลดไม่ขึ้น'); advance(cur.id, 999); }
     }
     if (s.player.volume !== appliedVol) {
       vid.volume = s.player.volume / 100;
@@ -454,12 +477,13 @@
   }
 
   var toastT = null;
-  function toast(msg) {
+  function toast(msg, ms) {
     var t = $('toast');
     t.textContent = msg;
+    t.classList.toggle('long', msg.length > 60);
     t.classList.add('on');
     clearTimeout(toastT);
-    toastT = setTimeout(function () { t.classList.remove('on'); }, 5000);
+    toastT = setTimeout(function () { t.classList.remove('on'); }, ms || 5000);
   }
 
   function status(msg, warn) {
