@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0e1f1a">
+  <title>เพลงในร้าน — ร้านระเบียงบัว ศรีสมาน</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="assets/img/lotus.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/music.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><img src="assets/img/lotus.svg" alt=""><span id="shop">ร้านระเบียงบัว ศรีสมาน</span></div>
+    <div class="top-right">
+      <span id="status" class="status"></span>
+      <span id="clock"></span>
+      <button id="fsBtn" class="ghost" title="เต็มจอ (F)">⛶</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="main">
+      <div class="video"><div id="yt"></div>
+        <div id="idle" class="idle hidden">
+          <div class="idle-icon">♪</div>
+          <h2>ยังไม่มีเพลงในคิว</h2>
+          <p>สแกน QR ด้านขวา เพื่อขอเพลงได้เลย</p>
+        </div>
+      </div>
+      <div class="now">
+        <div class="now-text">
+          <div class="eyebrow" id="nowLabel">กำลังเล่น</div>
+          <h1 id="nowTitle">—</h1>
+          <div class="by" id="nowBy"></div>
+        </div>
+        <div class="progress"><span id="tPos">0:00</span><div class="bar"><i id="bar"></i></div><span id="tDur">0:00</span></div>
+      </div>
+    </section>
+
+    <aside class="side">
+      <h3>ถัดไป <small id="qCount"></small></h3>
+      <ol id="queue" class="queue"></ol>
+      <div class="qr-card">
+        <div id="qr" class="qr"></div>
+        <div class="qr-text"><b>สแกนเพื่อขอเพลง</b><span id="qrUrl"></span></div>
+      </div>
+    </aside>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <div id="gate" class="gate hidden">
+    <div class="gate-box">
+      <img src="assets/img/lotus.svg" alt="">
+      <h2 id="gateTitle">เครื่องเล่นเพลงในร้าน</h2>
+      <p id="gateText"></p>
+      <form id="loginForm" class="hidden">
+        <input type="password" id="pw" placeholder="รหัสผ่านผู้ดูแล" autocomplete="current-password">
+        <button type="submit">เข้าสู่ระบบ</button>
+      </form>
+      <button id="startBtn" class="hidden">▶ เริ่มเล่นเพลง</button>
+      <p class="err" id="gateErr"></p>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+  <script src="assets/js/common.js"></script>
+  <script src="assets/js/jukebox.js"></script>
+  <script src="assets/js/music.js"></script>
+</body>
+</html>

@@ -176,6 +176,10 @@ function tvUrl(roomId, extra = '') {
   return new URL(`tv.html?room=${encodeURIComponent(roomId)}${extra}`, location.href).href;
 }
 
+function pageUrl(page) {
+  return new URL(page, location.href).href;
+}
+
 function fmtSec(s) {
   s = Math.round(s);
   return s >= 60 ? `${Math.floor(s / 60)} นาที ${s % 60 ? (s % 60) + ' วิ' : ''}` : `${s} วิ`;
@@ -616,6 +620,17 @@ function viewSettings() {
     </section>
 
     ${state.mode === 'server' ? `<section class="card">
+      <h2>เพลงในร้าน (Jukebox)</h2>
+      <p class="small-text muted" style="margin:0">เปิด <b>เครื่องเล่น</b> ที่คอมกลางที่ต่อลำโพง · ลูกค้าสแกน QR บนจอเครื่องเล่นเพื่อขอเพลง · พนักงานใช้หน้า <b>ขอเพลง</b> เป็นรีโมต (หยุด/ข้าม/เสียง/ตั้งค่า)</p>
+      <div class="url-list">
+        <div class="u"><b style="min-width:64px">เครื่องเล่น</b><code>${esc(pageUrl('music.html'))}</code>
+          <a class="btn icon small" href="music.html" target="_blank" title="เปิด">${icon('link')}</a></div>
+        <div class="u"><b style="min-width:64px">ขอเพลง</b><code>${esc(pageUrl('request.html'))}</code>
+          <button class="btn icon small" data-act="copy" data-text="${esc(pageUrl('request.html'))}" title="คัดลอก">${icon('link')}</button></div>
+      </div>
+    </section>
+
+    <section class="card">
       <h2>บัญชีผู้ดูแล (Server ของร้าน)</h2>
       <p class="small-text muted" style="margin:0">ข้อมูลถูกบันทึกบน Host ของร้าน และสำรองอัตโนมัติ 50 ครั้งล่าสุดใน <code>data/backups/</code></p>
       <div class="grid2">
