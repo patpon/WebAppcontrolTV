@@ -127,7 +127,7 @@
       '<label class="check"><input type="checkbox" id="setGuest"' + (c.guestRequests ? ' checked' : '') + '> เปิดให้ลูกค้าสแกน QR ขอเพลง</label>' +
       '<div class="grid3">' +
         '<label class="f">ขอได้คนละ (เพลงในคิว)<input type="number" min="0" max="20" id="setPer" value="' + esc(c.maxPerGuest) + '"></label>' +
-        '<label class="f">ยาวไม่เกิน (นาที)<input type="number" min="0" max="600" id="setMax" value="' + esc(c.maxMinutes) + '"></label>' +
+        '<label class="f">ยาวไม่เกิน (นาที, 0 = ไม่จำกัด)<input type="number" min="0" max="600" id="setMax" value="' + esc(c.maxMinutes) + '"></label>' +
         '<label class="f">ห้ามขอซ้ำภายใน (นาที)<input type="number" min="0" max="1440" id="setRepeat" value="' + esc(c.noRepeatMinutes) + '"></label>' +
       '</div>' +
       '<p class="small-text muted" style="margin:0">ใส่ 0 = ไม่จำกัด · ข้อจำกัดใช้กับลูกค้าเท่านั้น พนักงานขอได้ทุกเพลง</p>' +

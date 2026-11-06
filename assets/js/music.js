@@ -128,9 +128,19 @@
         if (depth < 8) await walk(entry, rel + '/', depth + 1, outFiles, outSongs);
       } else if (MEDIA_RE.test(entry.name)) {
         outFiles[rel] = entry;
-        outSongs.push({ p: rel, t: entry.name.replace(/\.[^.]+$/, '').replace(/_/g, ' ').trim() });
+        outSongs.push({ p: rel, t: titleOf(entry.name) });
       }
     }
+  }
+
+  // display/search title from a file name: drop extensions and downloader junk such as
+  // "onlymp3.to - " or "-<youtube id>-192k-<timestamp>"
+  function titleOf(name) {
+    var t = name.replace(/\.[^.]+$/, '').replace(/\.(mp3|mp4|m4a|wav)$/i, '')
+      .replace(/^onlymp3\.to\s*-\s*/i, '')
+      .replace(/-[A-Za-z0-9_-]{11}-\d{2,3}k-\d{9,}$/, '')
+      .replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+    return t || name;
   }
 
   function hashOf(list) {

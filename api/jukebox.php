@@ -38,7 +38,7 @@ function jb_defaults()
     return array(
         'guestRequests' => true,
         'maxPerGuest' => 2,
-        'maxMinutes' => 8,
+        'maxMinutes' => 0, // 0 = no length limit
         'noRepeatMinutes' => 60,
         'interruptFallback' => true,
         'fallbackShuffle' => true,
@@ -323,7 +323,7 @@ function lib_search($q)
     $words = preg_split('/\s+/u', mb_strtolower($q, 'UTF-8'), -1, PREG_SPLIT_NO_EMPTY);
     $out = array();
     foreach (lib_songs() as $x) {
-        $hay = mb_strtolower($x['p'], 'UTF-8');
+        $hay = mb_strtolower($x['p'] . ' ' . $x['t'], 'UTF-8');
         $ok = true;
         foreach ($words as $w) if (mb_strpos($hay, $w) === false) { $ok = false; break; }
         if (!$ok) continue;
