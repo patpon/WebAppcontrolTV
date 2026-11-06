@@ -74,6 +74,15 @@
     tick();
   });
 
+  // the remote opens in its own tab so this tab keeps playing; the same tab is reused on every click
+  function openRemote() { window.open('request.html', 'rb-remote'); }
+  $('remoteBtn').addEventListener('click', openRemote);
+
+  // typing another address in this tab would stop the music: ask first once playback has started
+  window.addEventListener('beforeunload', function (e) {
+    if (unlocked && cur) { e.preventDefault(); e.returnValue = ''; }
+  });
+
   $('gateDir').addEventListener('click', pickDir);
   $('dirBtn').addEventListener('click', pickDir);
 
@@ -477,6 +486,15 @@
         '<span class="t"><b>' + esc(q.title) + '</b><span>' + who(q).replace(/<\/?b>/g, '') + '</span></span></li>';
     }).join('') + (s.queue.length > max ? '<li class="more">และอีก ' + (s.queue.length - max) + ' เพลง</li>' : '')
       : '<li class="empty">' + (s.rules.hasFallback ? 'ระหว่างนี้เปิดเพลงรอไปก่อน' : 'คิวว่าง') + ' — สแกน QR เพื่อขอเพลง</li>';
+
+    // recently played fills the space left under a short queue
+    var room = Math.min(4, max - Math.min(s.queue.length, max));
+    var played = (s.history || []).slice(0, room);
+    $('playedHead').classList.toggle('hidden', !played.length);
+    $('played').innerHTML = played.map(function (h) {
+      return '<li><span class="n">✓</span><img src="' + JB.thumbOf(h) + '" alt="" loading="lazy">' +
+        '<span class="t"><b>' + esc(h.title) + '</b><span>' + who(h).replace(/<\/?b>/g, '') + '</span></span></li>';
+    }).join('');
   }
 
   function progress() {
@@ -532,6 +550,7 @@
   document.addEventListener('keydown', function (e) {
     if (e.target.tagName === 'INPUT') return;
     if (e.key === 'f' || e.key === 'F') fullscreen();
+    if (e.key === 'r' || e.key === 'R') openRemote();
   });
 
   var idleT = null;

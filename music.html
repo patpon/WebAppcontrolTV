@@ -16,6 +16,7 @@
     <div class="brand"><img src="assets/img/lotus.svg" alt=""><span id="shop">ร้านระเบียงบัว ศรีสมาน</span></div>
     <div class="top-right">
       <span id="status" class="status"></span>
+      <button id="remoteBtn" class="ghost remote" title="เปิดหน้าขอเพลง / รีโมต ในแท็บใหม่ — เพลงยังเล่นต่อ (R)">🎛 ขอเพลง · คิว</button>
       <button id="dirBtn" class="ghost hidden" title="เลือกโฟลเดอร์เพลง MP3/MP4 ในเครื่องนี้">📁 <span id="dirInfo">โฟลเดอร์เพลง</span></button>
       <span id="clock"></span>
       <button id="fsBtn" class="ghost" title="เต็มจอ (F)">⛶</button>
@@ -46,6 +47,8 @@
     <aside class="side">
       <h3>ถัดไป <small id="qCount"></small></h3>
       <ol id="queue" class="queue"></ol>
+      <h3 id="playedHead" class="sub hidden">เพิ่งเล่นไป</h3>
+      <ol id="played" class="queue played"></ol>
       <div class="qr-card">
         <div id="qr" class="qr"></div>
         <div class="qr-text"><b>สแกนเพื่อขอเพลง</b><span id="qrUrl"></span></div>
