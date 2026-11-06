@@ -375,6 +375,7 @@
     var act = b.dataset.act, id = b.dataset.id;
     if (act === 'close') { closeModal(); pending = null; }
     else if (act === 'profile') { pending = null; profileForm(); }
+    else if (act === 'install') install();
     else if (act === 'pick') askSong(results[+b.dataset.i]);
     else if (act === 'libPick') askSong(lib.songs[+b.dataset.i]);
     else if (act === 'again') { var h = histShown[+b.dataset.i]; if (h) askSong({ kind: h.kind, vid: h.vid, path: h.path, title: h.title, dur: 0 }); }
@@ -407,6 +408,31 @@
 
   fetch(RB.CONFIG_PATH + '?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.json(); })
     .then(function (c) { cfg = RB.normalize(c); $('shop').textContent = cfg.shop.name; }).catch(function () {});
+
+  /* Install as an app (PWA). Android/desktop Chrome hand us an install prompt;
+     iPhone Safari has none, so the button shows how to add it to the home screen. */
+  var installEvt = null;
+  var standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone;
+  var ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(function () {});
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    installEvt = e;
+    $('installBtn').classList.remove('hidden');
+  });
+  window.addEventListener('appinstalled', function () { installEvt = null; $('installBtn').classList.add('hidden'); toast('✓ ติดตั้งแล้ว — เปิดจากหน้าจอโฮมได้เลย'); });
+  if (ios && !standalone) $('installBtn').classList.remove('hidden');
+  function install() {
+    if (installEvt) {
+      installEvt.prompt();
+      installEvt.userChoice.then(function () { installEvt = null; $('installBtn').classList.add('hidden'); });
+      return;
+    }
+    modal('<div class="modal-head"><h3>ติดตั้งแอปขอเพลง</h3></div><div class="modal-body">' +
+      '<ol class="steps"><li>กดปุ่ม <b>แชร์</b> (สี่เหลี่ยมมีลูกศรขึ้น) ด้านล่างจอ Safari</li>' +
+      '<li>เลือก <b>เพิ่มไปยังหน้าจอโฮม</b></li><li>กด <b>เพิ่ม</b></li></ol>' +
+      '<div class="actions"><button class="btn primary" data-act="close">เข้าใจแล้ว</button></div></div>');
+  }
 
   setInterval(progress, 1000);
   poll();

@@ -82,3 +82,6 @@
   .qlist .tools { grid-column: 2 / -1; justify-content: flex-end; }
   .staff-set .grid3 { grid-template-columns: 1fr 1fr; }
 }
+
+/* install-as-app help (iPhone) */
+.rq-modal .steps, .modal-body .steps { margin: 0; padding-left: 22px; line-height: 1.8; }
