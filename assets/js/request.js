@@ -102,9 +102,19 @@
 
     var hist = (s.history || []).filter(function (h) { return h.src !== 'fallback'; }).slice(0, 5);
     $('histSec').classList.toggle('hidden', !hist.length);
-    $('history').innerHTML = hist.map(function (h) {
-      return '<li><img src="' + JB.thumbOf(h) + '" alt=""" loading="lazy"><span class="t"><b>' + esc(h.title) + '</b><span>' + esc(h.by || '') + '</span></span></li>';
+    var keyOf = function (x) { return x.kind === 'local' ? 'L:' + x.path : 'Y:' + x.vid; };
+    var queued = {};
+    s.queue.concat(s.now && s.now.src !== 'fallback' ? [s.now] : []).forEach(function (q) { queued[keyOf(q)] = 1; });
+    var wait = staff ? 0 : (s.rules.noRepeatMinutes || 0) * 60;
+    $('history').innerHTML = hist.map(function (h, i) {
+      var left = wait && h.at ? h.at + wait - s.time : 0;
+      var btn = (h.kind === 'local' && !h.path) || !open ? ''
+        : queued[keyOf(h)] ? '<span class="small-text muted">ในคิวแล้ว</span>'
+        : left > 0 ? '<span class="small-text muted">ขออีกได้ใน ' + Math.ceil(left / 60) + ' นาที</span>'
+        : '<button class="btn small" data-act="again" data-i="' + i + '">↻ ขออีก</button>';
+      return '<li><img src="' + JB.thumbOf(h) + '" alt="" loading="lazy"><span class="t"><b>' + esc(h.title) + '</b><span>' + esc(h.by || '') + '</span></span>' + btn + '</li>';
     }).join('');
+    histShown = hist;
 
     // staff settings
     $('staffBtn').textContent = staff ? 'ออกจากโหมดพนักงาน' : 'สำหรับพนักงาน';
@@ -269,6 +279,7 @@
     }).catch(function (err) { searching = false; $('results').innerHTML = ''; toast(err.message); });
   }
   var lastQ = '';
+  var histShown = [];
 
   /* full list of the shop's songs, a page at a time */
   var lib = { open: false, songs: [], total: 0, loading: false };
@@ -366,6 +377,7 @@
     else if (act === 'profile') { pending = null; profileForm(); }
     else if (act === 'pick') askSong(results[+b.dataset.i]);
     else if (act === 'libPick') askSong(lib.songs[+b.dataset.i]);
+    else if (act === 'again') { var h = histShown[+b.dataset.i]; if (h) askSong({ kind: h.kind, vid: h.vid, path: h.path, title: h.title, dur: 0 }); }
     else if (act === 'libToggle') libToggle();
     else if (act === 'libMore') libLoad();
     else if (act === 'searchYt') search(lastQ, 'yt');

@@ -56,7 +56,8 @@
 .qlist .tag { font-size: 11px; font-weight: 600; color: #241a05; background: var(--gold); border-radius: 99px; padding: 1px 8px; margin-left: 4px; }
 .qlist .tools { display: flex; gap: 4px; }
 .qlist .empty { display: block; text-align: center; color: var(--muted); padding: 24px; border-style: dashed; background: none; }
-.qlist.hist li { grid-template-columns: 96px 1fr; opacity: .8; }
+.qlist.hist li { grid-template-columns: 96px 1fr auto; }
+.qlist.hist li img, .qlist.hist li .t { opacity: .8; }
 
 .staff-set { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 .staff-set h2 { font-size: 17px; }
@@ -77,6 +78,7 @@
   .res { grid-template-columns: 96px 1fr; }
   .res .btn { grid-column: 1 / -1; }
   .qlist li { grid-template-columns: 22px 72px 1fr; }
+  .qlist.hist li { grid-template-columns: 72px 1fr auto; }
   .qlist .tools { grid-column: 2 / -1; justify-content: flex-end; }
   .staff-set .grid3 { grid-template-columns: 1fr 1fr; }
 }

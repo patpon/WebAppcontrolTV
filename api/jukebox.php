@@ -467,7 +467,10 @@ function public_state($st, $set, $staff)
         'now' => $strip($st['now']),
         'queue' => array_map($strip, $st['queue']),
         'history' => array_slice(array_map(function ($h) {
-            return array('vid' => $h['vid'], 'kind' => isset($h['kind']) ? $h['kind'] : 'yt', 'title' => $h['title'], 'by' => $h['by'], 'src' => $h['src']);
+            $kind = isset($h['kind']) ? $h['kind'] : 'yt';
+            $path = $kind === 'local' && isset($h['key']) && substr($h['key'], 0, 2) === 'L:' ? substr($h['key'], 2) : '';
+            return array('vid' => $h['vid'], 'kind' => $kind, 'path' => $path, 'title' => $h['title'], 'by' => $h['by'], 'src' => $h['src'],
+                'at' => isset($h['at']) ? (int)$h['at'] : 0);
         }, $st['history']), 0, 10),
         'player' => array(
             'online' => $online,
@@ -482,7 +485,8 @@ function public_state($st, $set, $staff)
             'maxMinutes' => (int)$set['maxMinutes'], 'canSearch' => $set['apiKey'] !== '',
             'hasFallback' => fallback_count($set) > 0,
             'hasLibrary' => (int)$lm['count'] > 0 && player_has_folder(),
-            'libCount' => player_has_folder() ? (int)$lm['count'] : 0
+            'libCount' => player_has_folder() ? (int)$lm['count'] : 0,
+            'noRepeatMinutes' => (int)$set['noRepeatMinutes']
         ),
         'staff' => $staff
     );
