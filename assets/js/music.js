@@ -426,6 +426,12 @@
     if (!JB.token()) { gate('login', 'เครื่องนี้ใช้เปิดเพลงหลักของร้าน — เข้าสู่ระบบด้วยรหัสผ่านเดียวกับแผงควบคุม (ทำครั้งเดียว)'); return; }
     if (!unlocked && $('gate').classList.contains('hidden')) gate('start', 'กดปุ่มเพื่อเริ่มเปิดเพลง');
     busy = true;
+    if (!last) {
+      // first call after opening: read where the song was before reporting, or the report
+      // (nothing loaded yet = position 0) would wipe it and the song would start over
+      JB.call('state').then(ok).catch(onErr).then(function () { busy = false; });
+      return;
+    }
     var claimed = claim;
     JB.call('report', { json: playerInfo() }).then(function (s) { if (claimed && !s.standby) claim = false; ok(s); })
       .catch(onErr).then(function () { busy = false; });
