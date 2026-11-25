@@ -27,6 +27,13 @@
   var busy = false;
   var timer = null;
   var fails = 0;            // consecutive failed server calls
+  var inst = Math.random().toString(36).slice(2, 12); // this window, for the one-player-at-a-time rule
+  var claim = true;         // a newly opened window takes over from an older one
+  var standby = false;      // another window is the active player
+  var movePos = -1;         // stuck-song watchdog: last position seen and when it last moved
+  var moveAt = 0;
+  var nudged = false;
+  var reloading = false;
   var objUrl = '';
 
   // local folder
@@ -46,6 +53,7 @@
     $('gate').classList.toggle('hidden', !kind);
     $('loginForm').classList.toggle('hidden', kind !== 'login');
     $('startBtn').classList.toggle('hidden', kind !== 'start');
+    $('takeBtn').classList.toggle('hidden', kind !== 'standby');
     $('gateDir').classList.toggle('hidden', kind !== 'start');
     $('gateText').textContent = text || '';
     $('gateErr').textContent = '';
@@ -97,7 +105,7 @@
 
   // typing another address in this tab would stop the music: ask first once playback has started
   window.addEventListener('beforeunload', function (e) {
-    if (unlocked && cur) { e.preventDefault(); e.returnValue = ''; }
+    if (unlocked && cur && !reloading) { e.preventDefault(); e.returnValue = ''; }
   });
 
   $('gateDir').addEventListener('click', pickDir);
@@ -316,6 +324,9 @@
     cur = item;
     cur.start = startAt || 0;
     loadAt = Date.now();
+    moveAt = Date.now();
+    movePos = -1;
+    nudged = false;
     playingSeen = false;
     $('stage').classList.toggle('is-local', local);
     $('artTitle').textContent = local ? item.title : '';
@@ -383,7 +394,7 @@
   }
 
   function checkOffline() {
-    if (!offline() || !songs.length || !unlocked) return;
+    if (standby || !offline() || !songs.length || !unlocked) return;
     if (cur && cur.src === 'offline') return;
     if (cur && last && last.player.paused) return; // staff paused the music
     // a YouTube song may still play from its buffer, a local one from the disk: switch when it stops
@@ -399,13 +410,13 @@
     var p = position();
     return {
       id: cur && cur.src !== 'offline' ? cur.id : '', pos: Math.floor(p.pos), dur: Math.floor(p.dur),
-      local: dirOk && songs.length > 0
+      local: dirOk && songs.length > 0, inst: inst, claim: claim
     };
   }
 
   function advance(fromId, error) {
     lastAdvance = Date.now();
-    return JB.call('advance', { json: { from: fromId || '', error: error || 0 } }).then(ok).catch(onErr);
+    return JB.call('advance', { json: { from: fromId || '', error: error || 0, inst: inst } }).then(ok).catch(onErr);
   }
 
   function tick() {
@@ -415,13 +426,38 @@
     if (!JB.token()) { gate('login', 'เครื่องนี้ใช้เปิดเพลงหลักของร้าน — เข้าสู่ระบบด้วยรหัสผ่านเดียวกับแผงควบคุม (ทำครั้งเดียว)'); return; }
     if (!unlocked && $('gate').classList.contains('hidden')) gate('start', 'กดปุ่มเพื่อเริ่มเปิดเพลง');
     busy = true;
-    JB.call('report', { json: playerInfo() }).then(ok).catch(onErr).then(function () { busy = false; });
+    var claimed = claim;
+    JB.call('report', { json: playerInfo() }).then(function (s) { if (claimed && !s.standby) claim = false; ok(s); })
+      .catch(onErr).then(function () { busy = false; });
   }
 
   function ok(s) {
     fails = 0;
+    if (s.standby) { goStandby(); return; }
+    if (standby) {
+      // the other window closed (or this one took over): carry on here
+      standby = false;
+      gate(null);
+      if (!unlocked) gate('start', 'กดปุ่มเพื่อเริ่มเปิดเพลง');
+    }
     apply(s);
   }
+
+  function goStandby() {
+    if (standby) return;
+    standby = true;
+    stopAll();
+    status('', false);
+    gate('standby', 'เครื่องเล่นเพลงเปิดอยู่ที่หน้าต่างอื่นแล้ว หน้าต่างนี้จึงหยุดรอ ไม่เล่นซ้อน — ปิดหน้าต่างนี้ได้เลย ' +
+      '(ถ้าหน้าต่างนั้นปิดไป หน้าต่างนี้จะเล่นต่อเองใน 20 วินาที)');
+  }
+
+  $('takeBtn').addEventListener('click', function () {
+    claim = true;
+    unlocked = true;
+    gate(null);
+    tick();
+  });
 
   function onErr(err) {
     if (err.status === 401 || err.status === 403) { gate('login', 'กรุณาเข้าสู่ระบบใหม่'); return; }
@@ -460,12 +496,33 @@
       // Wait 90 s, not less: YouTube may show ads before the song and those must not count as a stall.
       if (!playingSeen && unlocked && !s.player.paused && Date.now() - loadAt > 90000) { toast('ข้ามเพลงที่โหลดไม่ขึ้น'); advance(cur.id, 999); }
     }
+    watchdog(s);
     if (s.player.volume !== appliedVol) {
       vid.volume = s.player.volume / 100;
       if (ytReady) yt.setVolume(s.player.volume);
       appliedVol = ytReady ? s.player.volume : -1;
     }
     render(s);
+  }
+
+  /* A song that started but stopped moving (frozen YouTube frame, stalled stream):
+     poke it after 1 min; after 2.5 min reload the page, which resumes the same song where it was.
+     Long enough that a YouTube ad break does not count. */
+  function watchdog(s) {
+    if (!cur || !playingSeen || !unlocked || s.player.paused) { moveAt = Date.now(); return; }
+    var p = position().pos;
+    if (Math.abs(p - movePos) > 0.5) { movePos = p; moveAt = Date.now(); nudged = false; return; }
+    var still = Date.now() - moveAt;
+    if (still > 60000 && !nudged) { nudged = true; resume(); return; }
+    if (still < 150000) return;
+    moveAt = Date.now();
+    if (cur.kind === 'local') {
+      toast('ข้ามเพลงที่ค้าง');
+      if (cur.src === 'offline') { stopAll(); offlineNext(); } else advance(cur.id, 996);
+      return;
+    }
+    reloading = true;
+    location.reload();
   }
 
   /* ---------- view ---------- */

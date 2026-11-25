@@ -449,6 +449,15 @@ function clean_text($s, $max)
     return function_exists('mb_substr') ? mb_substr($s, 0, $max, 'UTF-8') : substr($s, 0, $max);
 }
 
+/* Player window identity, so only one window drives the music. Old players send none ('' = no check). */
+function player_inst($b) {
+    return preg_replace('/[^a-z0-9]/', '', substr(isset($b['inst']) ? (string)$b['inst'] : '', 0, 16));
+}
+
+function player_busy_elsewhere($p, $inst) {
+    return $inst !== '' && !empty($p['inst']) && $p['inst'] !== $inst && isset($p['seen']) && $p['seen'] > time() - 20;
+}
+
 function public_state($st, $set, $staff)
 {
     $dev = isset($_GET['dev']) ? substr((string)$_GET['dev'], 0, 40) : '';
@@ -674,7 +683,16 @@ switch ($action) {
         require_auth();
         $b = body_json();
         $id = isset($b['id']) ? (string)$b['id'] : '';
-        $p = array('seen' => time(), 'id' => $id, 'pos' => max(0, (int)(isset($b['pos']) ? $b['pos'] : 0)),
+        // One player at a time: a second open player window (same or another PC) waits on standby
+        // instead of fighting the first one over the queue. A window that claims takes over.
+        $inst = player_inst($b);
+        $old = jb_read('player', array());
+        if (player_busy_elsewhere($old, $inst) && empty($b['claim'])) {
+            $res = public_state(jb_state(), jb_settings(), true);
+            $res['standby'] = true;
+            out($res);
+        }
+        $p = array('seen' => time(), 'inst' => $inst, 'id' => $id, 'pos' => max(0, (int)(isset($b['pos']) ? $b['pos'] : 0)),
             'dur' => max(0, (int)(isset($b['dur']) ? $b['dur'] : 0)), 'local' => !empty($b['local']));
         jb_write('player', $p);
         $st = jb_state();
@@ -715,6 +733,11 @@ switch ($action) {
         $b = body_json();
         $from = isset($b['from']) ? (string)$b['from'] : '';
         $err = isset($b['error']) ? (int)$b['error'] : 0;
+        if (player_busy_elsewhere(jb_read('player', array()), player_inst($b))) {
+            $res = public_state(jb_state(), jb_settings(), true);
+            $res['standby'] = true;
+            out($res);
+        }
         jb_lock();
         $st = jb_state();
         $set = jb_settings();
